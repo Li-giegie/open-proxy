@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -49,7 +48,7 @@ var forwardCmd = &cobra.Command{
 		}
 
 		// 代理链：出站流量（HTTP 转发与 CONNECT 隧道）先经上游代理转发
-		upstreamURL, err := buildUpstreamURL(upstream, upstreamUser, upstreamPassword)
+		upstreamURL, err := proxycfg.UpstreamURL(upstream, upstreamUser, upstreamPassword)
 		if err != nil {
 			return err
 		}
@@ -60,13 +59,13 @@ var forwardCmd = &cobra.Command{
 		var upstreamTLS *tls.Config
 		if upstreamCAFile != "" || upstreamCertFile != "" || upstreamKeyFile != "" {
 			var err error
-			upstreamTLS, err = newClientTLSConfig(upstreamCAFile, upstreamCertFile, upstreamKeyFile)
+			upstreamTLS, err = proxycfg.ClientTLS(upstreamCAFile, upstreamCertFile, upstreamKeyFile)
 			if err != nil {
 				return fmt.Errorf("配置上游 TLS: %w", err)
 			}
 		}
 
-		tlsConf, err := newTLSConfig(certFile, keyFile, clientCAFile)
+		tlsConf, err := proxycfg.ServerTLS(certFile, keyFile, clientCAFile)
 		if err != nil {
 			return err
 		}
@@ -104,11 +103,6 @@ var forwardCmd = &cobra.Command{
 		}
 		return srv.ListenAndServe()
 	},
-}
-
-// buildUpstreamURL 构造上游代理 URL（代理链），语义见 proxycfg.UpstreamURL。
-func buildUpstreamURL(raw, user, password string) (*url.URL, error) {
-	return proxycfg.UpstreamURL(raw, user, password)
 }
 
 func init() {

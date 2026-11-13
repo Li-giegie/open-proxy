@@ -2,87 +2,21 @@ package admin
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"io"
-	"math/big"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
+
+	"github.com/Li-giegie/open-proxy/internal/testutil"
 )
-
-// genCA 生成自签 CA（测试用小 PKI，与 reverseproxy/httpproxy 的测试助手
-// 同构，包私有不可复用故各自保留一份）。
-func genCA(t *testing.T) (caPEM []byte, ca *x509.Certificate, key *ecdsa.PrivateKey) {
-	t.Helper()
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tpl := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: "admin-test-ca"},
-		NotBefore:             time.Now().Add(-time.Hour),
-		NotAfter:              time.Now().Add(time.Hour),
-		IsCA:                  true,
-		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
-		BasicConstraintsValid: true,
-	}
-	der, err := x509.CreateCertificate(rand.Reader, tpl, tpl, &key.PublicKey, key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ca, err = x509.ParseCertificate(der)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), ca, key
-}
-
-// genLeaf 用 CA 签发叶子证书，server 为 true 时含 127.0.0.1 SAN。
-func genLeaf(t *testing.T, ca *x509.Certificate, caKey *ecdsa.PrivateKey, cn string, server bool) (certPEM, keyPEM []byte) {
-	t.Helper()
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tpl := &x509.Certificate{
-		SerialNumber: big.NewInt(time.Now().UnixNano()),
-		Subject:      pkix.Name{CommonName: cn},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-	}
-	if server {
-		tpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
-		tpl.IPAddresses = []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")}
-	} else {
-		tpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
-	}
-	der, err := x509.CreateCertificate(rand.Reader, tpl, ca, &key.PublicKey, caKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	keyDER, err := x509.MarshalECPrivateKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}),
-		pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
-}
 
 // TestContentTLS 验证 TLS 字段以 PEM 内容（而非路径）配置：
 // 监听端 TLS 直接生效，非法内容在创建期报 400。
 func TestContentTLS(t *testing.T) {
-	caPEM, ca, caKey := genCA(t)
-	srvCertPEM, srvKeyPEM := genLeaf(t, ca, caKey, "resource-server", true)
+	caPEM, ca, caKey := testutil.GenCA(t)
+	srvCertPEM, srvKeyPEM := testutil.GenLeaf(t, ca, caKey, "resource-server", true)
 
 	// 经代理访问的本地目标（确定性结果）
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

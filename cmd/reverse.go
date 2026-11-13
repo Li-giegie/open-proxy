@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Li-giegie/open-proxy/internal/proxycfg"
 	"github.com/Li-giegie/open-proxy/internal/reverseproxy"
 )
 
@@ -33,7 +34,7 @@ func readPEMFiles(paths ...string) ([][]byte, error) {
 }
 
 // reverseCmd 启动 HTTP 反向代理，监听端支持明文 / TLS / mTLS
-// （复用 newTLSConfig），与 forward 家族平行扩展。
+// （复用 proxycfg.ServerTLS），与 forward 家族平行扩展。
 var reverseCmd = &cobra.Command{
 	Use:   "reverse",
 	Short: "HTTP 反向代理",
@@ -65,7 +66,7 @@ var reverseCmd = &cobra.Command{
 			return err
 		}
 
-		tlsConf, err := newTLSConfig(certFile, keyFile, clientCAFile)
+		tlsConf, err := proxycfg.ServerTLS(certFile, keyFile, clientCAFile)
 		if err != nil {
 			return err
 		}
