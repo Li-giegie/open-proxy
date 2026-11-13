@@ -224,6 +224,15 @@ func (m *Manager) startLocked(r *Resource) error {
 		IdleTimeout:       90 * time.Second,
 		TLSConfig:         tlsConf,
 	}
+	// 正向代理的 CONNECT 隧道依赖 Hijack 劫持连接，而 HTTP/2 的
+	// ResponseWriter 不实现 http.Hijacker，隧道无法建立。显式声明
+	// 只支持 HTTP/1.1，TLS ALPN 因此只协商 http/1.1。
+	// 反向代理不需要劫持连接，保留 HTTP/2。
+	if r.Type == TypeForward {
+		protocols := new(http.Protocols)
+		protocols.SetHTTP1(true)
+		srv.Protocols = protocols
+	}
 	m.inst[r.ID] = &inst{srv: srv, ln: ln}
 	delete(m.status, r.ID)
 	delete(m.errMsg, r.ID)
