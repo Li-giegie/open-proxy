@@ -331,7 +331,8 @@ func TestBasicAuth(t *testing.T) {
 		t.Fatalf("static page content missing")
 	}
 
-	// 无凭证访问 API：401 + 挑战头
+	// 无凭证访问 API：401 且不携带 WWW-Authenticate（携带该头会促使
+	// 浏览器弹原生认证框，登录必须只走前端登录页）
 	resp, err = http.Get(api.URL + "/api/resources")
 	if err != nil {
 		t.Fatal(err)
@@ -340,8 +341,8 @@ func TestBasicAuth(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("no auth: status = %d, want 401", resp.StatusCode)
 	}
-	if resp.Header.Get("WWW-Authenticate") == "" {
-		t.Errorf("missing WWW-Authenticate")
+	if resp.Header.Get("WWW-Authenticate") != "" {
+		t.Errorf("401 不应携带 WWW-Authenticate（会触发浏览器原生弹窗）")
 	}
 
 	// Basic 直接访问 API：可用

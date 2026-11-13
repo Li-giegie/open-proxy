@@ -6,7 +6,7 @@
 #   连域名  → 加 DNS:xxx.example.com（支持通配符 *.example.com）
 # 多写不报错（SAN 是白名单），少写必失败。
 # 修改后重新运行 gen-certs.sh 即可重新签发。
-subjectAltName = IP:127.0.0.1, IP:::1, DNS:localhost
+subjectAltName = IP:127.0.0.1, IP:::1, IP:43.157.12.80, DNS:localhost, DNS:yiya.store
 
 extendedKeyUsage = serverAuth
 keyUsage = digitalSignature

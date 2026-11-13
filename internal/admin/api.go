@@ -104,7 +104,9 @@ func Handler(m *Manager, user, password string) http.Handler {
 	}
 
 	unauthorized := func(w http.ResponseWriter) {
-		w.Header().Set("WWW-Authenticate", `Basic realm="open-proxy-admin", charset="UTF-8"`)
+		// 不设置 WWW-Authenticate 头：该头会促使浏览器对 fetch 的 401
+		// 弹出原生认证框。登录由前端登录页完成，curl 的 -u 也不依赖
+		// 挑战头，删掉后没有任何功能损失。
 		writeError(w, http.StatusUnauthorized, errors.New("未认证或凭证无效"))
 	}
 

@@ -1,0 +1,12 @@
+# 服务端证书的扩展配置（openssl x509 -extfile 使用）。
+#
+# subjectAltName（SAN）是证书校验的唯一依据（Go 1.15+ 忽略 CN）：
+# 客户端用什么地址连接，这里就必须包含对应条目——
+#   连 IP    → 加 IP:x.x.x.x
+#   连域名  → 加 DNS:xxx.example.com（支持通配符 *.example.com）
+# 多写不报错（SAN 是白名单），少写必失败。
+# 修改后重新运行 gen-certs.sh 即可重新签发。
+subjectAltName = IP:127.0.0.1, IP:::1, IP:43.157.12.80, DNS:localhost, DNS:yiya.store
+
+extendedKeyUsage = serverAuth
+keyUsage = digitalSignature
