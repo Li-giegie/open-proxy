@@ -3,7 +3,7 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 */
 package main
 
-import "open-proxy/cmd"
+import "github.com/Li-giegie/open-proxy/cmd"
 
 func main() {
 	cmd.Execute()

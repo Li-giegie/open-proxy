@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"open-proxy/internal/reverseproxy"
+	"github.com/Li-giegie/open-proxy/internal/reverseproxy"
 )
 
 // readPEMFiles 读取 PEM 证书文件，空路径返回 nil。

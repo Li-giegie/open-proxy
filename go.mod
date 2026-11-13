@@ -1,4 +1,4 @@
-module open-proxy
+module github.com/Li-giegie/open-proxy
 
 go 1.26.8
 

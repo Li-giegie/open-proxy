@@ -12,7 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"open-proxy/internal/admin"
+	"github.com/Li-giegie/open-proxy/internal/admin"
 )
 
 // adminCmd 启动代理管理中心：Web UI + REST API，统一创建/启停

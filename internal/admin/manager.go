@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"open-proxy/internal/httpproxy"
-	"open-proxy/internal/proxycfg"
-	"open-proxy/internal/reverseproxy"
+	"github.com/Li-giegie/open-proxy/internal/httpproxy"
+	"github.com/Li-giegie/open-proxy/internal/proxycfg"
+	"github.com/Li-giegie/open-proxy/internal/reverseproxy"
 )
 
 // 资源运行状态。

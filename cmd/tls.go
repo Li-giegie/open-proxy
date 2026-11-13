@@ -3,7 +3,7 @@ package cmd
 import (
 	"crypto/tls"
 
-	"open-proxy/internal/proxycfg"
+	"github.com/Li-giegie/open-proxy/internal/proxycfg"
 )
 
 // newTLSConfig 根据证书参数构建服务端 TLS 配置，供各代理命令共用。

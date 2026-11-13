@@ -14,8 +14,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"open-proxy/internal/httpproxy"
-	"open-proxy/internal/proxycfg"
+	"github.com/Li-giegie/open-proxy/internal/httpproxy"
+	"github.com/Li-giegie/open-proxy/internal/proxycfg"
 )
 
 // forwardCmd 启动 HTTP/HTTPS 正向代理。子命令按角色/协议命名：
