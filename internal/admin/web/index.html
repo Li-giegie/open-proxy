@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>open-proxy 管理中心</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --border: #e5eaf2; --border-soft: #edf1f7;
+    --text: #1f2c3d; --muted: #8090a6;
+    --accent: #2f6bff; --accent-weak: #eef3ff;
+    --green: #16a34a; --green-bg: #e6f7ed;
+    --red: #dc2626; --red-bg: #fdeeee;
+    --amber: #d97706; --amber-bg: #fdf3e3;
+    --shadow: 0 1px 2px rgba(31,44,61,.05), 0 6px 24px rgba(31,44,61,.07);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-thumb { background: #c9d3e0; border-radius: 3px; }
+  *::-webkit-scrollbar-thumb:hover { background: #aab8c9; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-corner { background: transparent; }
+
+  /* ---------- 通用控件 ---------- */
+  button {
+    background: #fff; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 16px; cursor: pointer; font-size: 13px;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary {
+    background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600;
+  }
+  button.primary:hover { background: #3f78ff; color: #fff; }
+  button.danger:hover { border-color: var(--red); color: var(--red); }
+  button.small { padding: 3px 11px; font-size: 12px; }
+
+  .badge { display: inline-block; padding: 2px 11px; border-radius: 11px; font-size: 12px; white-space: nowrap; }
+  .badge.running { background: var(--green-bg); color: var(--green); }
+  .badge.stopped { background: #f0f3f8; color: var(--muted); }
+  .badge.error { background: var(--red-bg); color: var(--red); }
+  .mono { font-family: Consolas, "Cascadia Mono", monospace; font-size: 12.5px; }
+  .muted { color: var(--muted); }
+
+  /* ---------- 请求加载指示（顶部进度条） ---------- */
+  #loadbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 100;
+    display: none; overflow: hidden; pointer-events: none;
+  }
+  #loadbar .fill {
+    position: absolute; top: 0; height: 100%; width: 38%;
+    background: var(--accent); border-radius: 2px;
+    animation: loadslide .9s ease-in-out infinite;
+  }
+  @keyframes loadslide {
+    0% { left: -38%; }
+    100% { left: 100%; }
+  }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+
+  /* ---------- 登录视图 ---------- */
+  #login-view {
+    min-height: 100vh; display: none; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #eef2fa 0%, #f7f9fd 60%, #eef3ff 100%);
+  }
+  .login-card {
+    width: 400px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow); padding: 40px 42px 34px;
+  }
+  .login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .login-brand .dot {
+    width: 34px; height: 34px; border-radius: 9px; background: var(--accent);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px;
+  }
+  .login-brand h1 { margin: 0; font-size: 19px; }
+  .login-sub { color: var(--muted); font-size: 12.5px; margin: 0 0 26px 46px; }
+  .login-card label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; }
+  .login-card input {
+    width: 100%; background: #f7f9fc; color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-bottom: 16px;
+  }
+  .login-card input:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .login-btn { width: 100%; padding: 10px; font-size: 14.5px; border-radius: 8px; }
+  #login-error { color: var(--red); font-size: 12.5px; min-height: 18px; margin-bottom: 6px; }
+
+  /* ---------- 应用视图 ---------- */
+  #app-view { display: none; min-height: 100vh; flex-direction: column; }
+  nav {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--panel); border-bottom: 1px solid var(--border-soft);
+    padding: 0 36px; height: 56px; position: sticky; top: 0; z-index: 5;
+  }
+  nav .dot {
+    width: 28px; height: 28px; border-radius: 8px; background: var(--accent);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px;
+  }
+  nav .brand { font-weight: 600; font-size: 15px; margin-right: auto; }
+  nav .user-chip {
+    display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px;
+    background: #f5f7fb; border: 1px solid var(--border-soft); border-radius: 15px; padding: 3px 14px 3px 8px;
+  }
+  nav .user-chip .avatar {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--accent-weak);
+    color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+  }
+  main { width: 100%; max-width: 1280px; margin: 0 auto; padding: 26px 36px 48px; }
+
+  .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
+  .toolbar .hint { margin-left: auto; color: var(--muted); font-size: 12.5px; }
+
+  .table-wrap {
+    background: var(--panel); border: 1px solid var(--border-soft);
+    border-radius: 12px; box-shadow: var(--shadow); overflow: auto;
+  }
+  table { width: 100%; border-collapse: collapse; min-width: 1080px; }
+  th, td { padding: 13px 16px; text-align: left; border-bottom: 1px solid var(--border-soft); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; background: #fafbfd; white-space: nowrap; }
+  tbody tr { transition: background .12s; }
+  tbody tr:hover { background: #f8faff; }
+  tbody tr:last-child td { border-bottom: none; }
+  /* 操作列单行展示，不换行 */
+  td .actions { display: flex; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
+  td .actions button { flex: none; padding: 3px 10px; font-size: 12px; }
+  .cell-ellipsis { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .err-text { color: var(--red); font-size: 12px; display: block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { padding: 52px; text-align: center; color: var(--muted); font-size: 13px; }
+  section.legend { color: var(--muted); font-size: 12px; margin-top: 18px; line-height: 1.9; }
+
+  /* ---------- 弹窗 ---------- */
+  dialog {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 13px; padding: 24px 28px;
+    box-shadow: 0 24px 64px rgba(31,44,61,.22);
+    overflow: hidden; /* 高度由内部布局决定，弹窗自身不出滚动条 */
+  }
+  dialog::backdrop { background: rgba(23,34,51,.42); backdrop-filter: blur(1px); }
+  dialog h2 { margin: 0 0 18px; font-size: 16px; font-weight: 600; }
+  #dlg { width: 760px; max-width: 94vw; max-height: 88vh; overflow: auto; }
+  #users-dlg { width: 520px; max-width: 94vw; }
+  /* 注意：display 只能挂在 [open] 上——写到弹窗基样式会覆盖浏览器对
+     关闭状态 dialog 的 display:none，导致关闭的弹窗渲染在页面底部 */
+  #metrics-dlg { width: 900px; max-width: 94vw; }
+  #metrics-dlg[open] { height: min(660px, 88vh); display: flex; flex-direction: column; }
+
+  .field { margin-bottom: 14px; }
+  .field > label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  .field input {
+    width: 100%; background: #f7f9fc; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 11px; font-size: 13px;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .field .hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+  .pem-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+  .pem-row .pem-tag { width: 32px; flex: none; padding-top: 8px; color: var(--muted); font-size: 11px; }
+  .pem-row textarea {
+    flex: 1; min-width: 0; background: #f7f9fc; color: var(--text);
+    border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px;
+    font: 11px Consolas, monospace; resize: vertical; line-height: 1.5;
+  }
+  .pem-row textarea:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .file-btn {
+    position: relative; flex: none; background: #fff; color: var(--text);
+    border: 1px solid var(--border); border-radius: 7px; padding: 7px 12px;
+    cursor: pointer; font-size: 12px; white-space: nowrap; user-select: none;
+  }
+  .file-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .file-btn input { position: absolute; left: -9999px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; display: none; z-index: 50;
+    background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--red);
+    border-radius: 9px; padding: 12px 18px; max-width: 460px; font-size: 13px;
+    box-shadow: var(--shadow);
+  }
+
+  /* ---- 用户管理弹窗 ---- */
+  .user-list { max-height: 300px; overflow: auto; border: 1px solid var(--border-soft); border-radius: 9px; background: #fafbfd; }
+  .user-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px; border-bottom: 1px solid var(--border-soft); font-size: 13px; background: #fff;
+  }
+  .user-row:last-child { border-bottom: none; }
+  .user-row .name { flex: 1; }
+  .add-user-row { display: flex; gap: 8px; margin-top: 16px; }
+  .add-user-row input {
+    flex: 1; min-width: 0; background: #f7f9fc; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 11px; font-size: 13px;
+  }
+  .add-user-row input:focus { outline: none; border-color: var(--accent); background: #fff; }
+
+  /* ---- 监控弹窗（固定高度，唯一滚动区在“最近请求”） ---- */
+  #metrics-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat-tile { background: #f8fafd; border: 1px solid var(--border-soft); border-radius: 10px; padding: 12px 14px; }
+  .stat-tile .label { color: var(--muted); font-size: 11.5px; }
+  .stat-tile .value { font-size: 19px; font-family: Consolas, monospace; margin-top: 3px; }
+  .sub-title { color: var(--muted); font-size: 12.5px; margin: 16px 0 8px; font-weight: 600; letter-spacing: .3px; }
+  .mini-table { border-collapse: collapse; width: 100%; background: #fff; }
+  .mini-table td, .mini-table th { padding: 6px 10px; border-bottom: 1px solid var(--border-soft); text-align: left; font-size: 12.5px; }
+  .mini-table th { color: var(--muted); font-weight: 500; white-space: nowrap; background: #fafbfd; }
+  .side-box { border: 1px solid var(--border-soft); border-radius: 9px; overflow: auto; max-height: 176px; background: #fff; }
+  .side-box .mini-table tr:last-child td { border-bottom: none; }
+  #recent-box {
+    flex: 1; min-height: 0; margin-top: 0;
+    border: 1px solid var(--border-soft); border-radius: 9px; overflow: auto; background: #fff;
+  }
+  #recent-box .mini-table tr:last-child td { border-bottom: none; }
+</style>
+</head>
+<body>
+
+<!-- ================= 登录视图 ================= -->
+<div id="login-view">
+  <div class="login-card">
+    <div class="login-brand"><div class="dot">OP</div><h1>open-proxy 管理中心</h1></div>
+    <p class="login-sub">登录后管理正向 / 反向代理资源</p>
+    <form onsubmit="return doLogin(event)">
+      <label>用户名</label>
+      <input id="login-user" autocomplete="username" autofocus>
+      <label>密码</label>
+      <input id="login-pass" type="password" autocomplete="current-password">
+      <div id="login-error"></div>
+      <button type="submit" class="primary login-btn">登 录</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= 应用视图 ================= -->
+<div id="app-view">
+  <nav>
+    <div class="dot">OP</div>
+    <span class="brand">open-proxy 管理中心</span>
+    <div class="user-chip"><span class="avatar" id="user-avatar">A</span><span id="user-name">admin</span></div>
+    <button class="small" onclick="doLogout()">退出登录</button>
+  </nav>
+  <main>
+    <div class="toolbar">
+      <button class="primary" onclick="openCreate('forward')">＋ 新建正向代理</button>
+      <button class="primary" onclick="openCreate('reverse')">＋ 新建反向代理</button>
+      <span class="hint" id="count-hint"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tbl">
+        <thead><tr>
+          <th style="width:15%">名称</th><th style="width:7%">类型</th>
+          <th style="width:16%">监听地址</th><th style="width:12%">状态</th>
+          <th style="width:7%">请求</th><th style="width:14%">流量 ↓ / ↑</th>
+          <th>关键配置</th><th style="width:22%">操作</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="empty" class="empty" hidden>暂无代理资源，点击上方按钮创建</div>
+    </div>
+
+    <section class="legend">
+      正向代理：客户端以代理形式访问（绝对 URL / CONNECT），可配置代理链（upstream）、多用户认证与监控。<br>
+      反向代理：客户端直接访问，请求被转发到 backend 列表（轮询负载均衡）。TLS 字段均为 PEM 内容，随资源一起持久化。
+    </section>
+  </main>
+</div>
+
+<!-- 创建资源弹窗 -->
+<dialog id="dlg">
+  <h2 id="dlg-title"></h2>
+  <form id="form" onsubmit="return submitCreate(event)">
+    <div class="two-col" style="margin-bottom:14px">
+      <div class="field"><label>名称 *</label><input id="f-name" required placeholder="如 内网出口"></div>
+      <div class="field"><label>监听地址 *</label><input id="f-address" required placeholder="127.0.0.1:1080"></div>
+    </div>
+
+    <div id="f-forward" hidden>
+      <div class="field"><label>认证用户名 / 密码（面向客户端，创建后可在“用户”里动态增删）</label>
+        <div style="display:flex;gap:8px">
+          <input id="ff-user" placeholder="user（可空）">
+          <input id="ff-password" placeholder="password（可空）">
+        </div>
+      </div>
+      <div class="field"><label>上游代理（代理链）</label><input id="ff-upstream" placeholder="http://host:port 或 https://host:port（可空）">
+        <div class="hint">填写后出站流量经该代理转发；https 上游可配下方 TLS</div></div>
+      <div class="field"><label>上游认证（Basic）</label>
+        <div style="display:flex;gap:8px">
+          <input id="ff-upstream-user" placeholder="user（可空）">
+          <input id="ff-upstream-password" placeholder="password（可空）">
+        </div>
+      </div>
+      <div class="field"><label>上游 TLS（仅 https 上游，PEM 内容）</label>
+        <div class="pem-row"><span class="pem-tag">CA</span><textarea id="ff-upstream-ca" rows="2" placeholder="校验上游证书的 CA —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'ff-upstream-ca')"></label></div>
+        <div class="pem-row"><span class="pem-tag">证书</span><textarea id="ff-upstream-cert" rows="2" placeholder="mTLS 出示的客户端证书 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'ff-upstream-cert')"></label></div>
+        <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="ff-upstream-key" rows="2" placeholder="客户端私钥 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'ff-upstream-key')"></label></div>
+      </div>
+    </div>
+
+    <div id="f-reverse" hidden>
+      <div class="field"><label>backend 列表 *（逗号分隔，多个轮询负载均衡）</label>
+        <input id="fr-backends" placeholder="http://127.0.0.1:9000, http://127.0.0.1:9001">
+      </div>
+      <div class="field"><label>backend TLS（PEM 内容）</label>
+        <div class="pem-row"><span class="pem-tag">CA</span><textarea id="fr-backend-ca" rows="2" placeholder="校验 backend 证书的 CA —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'fr-backend-ca')"></label></div>
+        <div class="pem-row"><span class="pem-tag">证书</span><textarea id="fr-backend-cert" rows="2" placeholder="mTLS 出示的客户端证书 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'fr-backend-cert')"></label></div>
+        <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="fr-backend-key" rows="2" placeholder="客户端私钥 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'fr-backend-key')"></label></div>
+      </div>
+    </div>
+
+    <div id="f-listen-tls">
+      <div class="field"><label>监听端 TLS（PEM 内容）</label>
+        <div class="pem-row"><span class="pem-tag">证书</span><textarea id="f-cert" rows="2" placeholder="服务端证书 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'f-cert')"></label></div>
+        <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="f-key" rows="2" placeholder="服务端私钥 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'f-key')"></label></div>
+        <div class="pem-row"><span class="pem-tag">CA</span><textarea id="f-client-ca" rows="2" placeholder="客户端 CA（启用 mTLS）—— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'f-client-ca')"></label></div>
+        <div class="hint">本机访问通常无需填写；内容随资源一起持久化，不依赖服务器磁盘上的证书文件</div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" onclick="dlg.close()">取消</button>
+      <button type="submit" class="primary">创建并启动</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 用户管理弹窗 -->
+<dialog id="users-dlg">
+  <h2 id="users-title">认证用户管理</h2>
+  <div id="users-list" class="user-list"></div>
+  <div class="field" style="margin-top:18px">
+    <label>添加 / 更新用户</label>
+    <div class="add-user-row">
+      <input id="nu-user" placeholder="用户名">
+      <input id="nu-password" placeholder="密码">
+      <button class="primary" onclick="addUser(event)">添加</button>
+    </div>
+    <div class="hint">运行中的资源即时生效，无需重启；首次为无认证资源添加用户时会重启该实例</div>
+  </div>
+  <div class="form-actions">
+    <button type="button" onclick="usersDlg.close()">关闭</button>
+  </div>
+</dialog>
+
+<!-- 监控弹窗 -->
+<dialog id="metrics-dlg">
+  <h2 id="metrics-title">运行监控</h2>
+  <div id="metrics-body"></div>
+  <div class="form-actions">
+    <button type="button" onclick="metricsDlg.close()">关闭</button>
+  </div>
+</dialog>
+
+<div id="toast"></div>
+<div id="loadbar"><div class="fill"></div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const dlg = $('dlg');
+const usersDlg = $('users-dlg');
+const metricsDlg = $('metrics-dlg');
+let createType = 'forward';
+let currentId = null;
+
+/* ================= 认证 ================= */
+
+const TOKEN_KEY = 'op_admin_token';
+let authUser = '';
+
+function doLogin(ev) {
+  ev.preventDefault();
+  $('login-error').textContent = '';
+  const btn = ev.target.querySelector('.login-btn');
+  busy(btn, track(fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user: $('login-user').value.trim(), password: $('login-pass').value }),
+  }).then(r => r.json().then(data => ({ code: r.status, data }))).then(({ code, data }) => {
+    if (code !== 200) {
+      $('login-error').textContent = (data && data.error) || '用户名或密码错误';
+      return;
+    }
+    if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
+    authUser = $('login-user').value.trim() || 'admin';
+    enterApp();
+  }).catch(() => { $('login-error').textContent = '网络错误，请重试'; })));
+  return false;
+}
+
+function doLogout() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) fetch('/api/logout', { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+  localStorage.removeItem(TOKEN_KEY);
+  showLogin();
+}
+
+function showLogin() {
+  $('app-view').style.display = 'none';
+  $('login-view').style.display = 'flex';
+  $('login-pass').value = '';
+  setTimeout(() => $('login-user').focus(), 50);
+}
+
+function enterApp() {
+  $('login-view').style.display = 'none';
+  $('app-view').style.display = 'flex';
+  $('user-name').textContent = authUser;
+  $('user-avatar').textContent = (authUser[0] || '?').toUpperCase();
+  refresh();
+}
+
+/* ================= 请求加载指示 ================= */
+
+// 用户发起的请求显示顶部进度条；后台轮询（静默模式）不打扰界面。
+let pending = 0;
+function track(p) {
+  pending++;
+  $('loadbar').style.display = 'block';
+  return p.finally(() => {
+    if (--pending <= 0) {
+      pending = 0;
+      $('loadbar').style.display = 'none';
+    }
+  });
+}
+
+// busy 在请求期间禁用按钮并显示等待文案，防止重复提交。
+function busy(btn, p) {
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '处理中…';
+  p.finally(() => {
+    btn.disabled = false;
+    btn.textContent = old;
+  });
+}
+
+// api 统一带上会话令牌；401 时回到登录页。
+// opts.silent 为 true 时不显示加载指示（用于定时轮询）。
+function api(method, url, body, opts) {
+  const opt = { method, headers: {} };
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) opt.headers.Authorization = 'Bearer ' + token;
+  if (body !== undefined) opt.body = JSON.stringify(body);
+  const p = fetch(url, opt).then(resp => {
+    if (resp.status === 401) { showLogin(); throw '登录已过期，请重新登录'; }
+    if (resp.status === 204) return null;
+    return resp.json().then(data => {
+      if (!resp.ok) throw (data && data.error) || ('HTTP ' + resp.status);
+      return data;
+    });
+  });
+  return (opts && opts.silent) ? p : track(p);
+}
+
+// 启动：先探测服务器是否启用认证——未启用则直接进入应用（不显示
+// 登录页）；已启用则按本地令牌决定进应用还是登录页
+(function boot() {
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  }).then(r => r.json().then(d => ({ code: r.status, d }))).then(({ code, d }) => {
+    if (code === 200 && d.auth === false) {
+      authUser = '';
+      enterApp();
+      return;
+    }
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) { showLogin(); return; }
+    return fetch('/api/resources', { headers: { Authorization: 'Bearer ' + token } }).then(r => {
+      if (r.ok) { authUser = '已登录'; enterApp(); }
+      else showLogin();
+    });
+  }).catch(() => showLogin());
+})();
+
+/* ================= 通用 ================= */
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', 4500);
+}
+
+// loadPEM 把选择的 PEM 文件读入对应 textarea（浏览器本地读取）。
+function loadPEM(input, targetId) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  file.text().then(text => {
+    const ta = $(targetId);
+    ta.value = text.trim();
+    ta.title = `${file.name}（${file.size} 字节）已读入`;
+    ta.style.borderColor = 'var(--green)';
+  }).catch(err => toast('读取文件失败：' + err));
+  input.value = '';
+}
+
+function pemValue(id) {
+  return $(id).value.trim();
+}
+
+function fmtBytes(n) {
+  if (n == null) n = 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+  if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+  return (n / 1073741824).toFixed(2) + ' GB';
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('zh-CN', { hour12: false });
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function statusText(s) {
+  return { running: '运行中', stopped: '已停止', error: '错误' }[s] || s;
+}
+
+/* ================= 创建 ================= */
+
+function openCreate(type) {
+  createType = type;
+  $('dlg-title').textContent = type === 'forward' ? '新建正向代理' : '新建反向代理';
+  $('f-forward').hidden = type !== 'forward';
+  $('f-reverse').hidden = type !== 'reverse';
+  $('f-address').placeholder = type === 'forward' ? '127.0.0.1:1080（端口 0 随机分配）' : '127.0.0.1:8080';
+  dlg.showModal();
+}
+
+function submitCreate(ev) {
+  ev.preventDefault();
+  const res = { name: $('f-name').value.trim(), address: $('f-address').value.trim(), type: createType };
+  if (createType === 'forward') {
+    res.forward = {
+      user: $('ff-user').value.trim(), password: $('ff-password').value,
+      upstream: $('ff-upstream').value.trim(),
+      upstream_user: $('ff-upstream-user').value.trim(),
+      upstream_password: $('ff-upstream-password').value,
+      upstream_ca: pemValue('ff-upstream-ca'),
+      upstream_cert: pemValue('ff-upstream-cert'),
+      upstream_key: pemValue('ff-upstream-key'),
+      cert: pemValue('f-cert'), key: pemValue('f-key'), client_ca: pemValue('f-client-ca'),
+    };
+  } else {
+    res.reverse = {
+      backends: $('fr-backends').value.split(/[\n,]/).map(s => s.trim()).filter(Boolean),
+      backend_ca: pemValue('fr-backend-ca'),
+      backend_cert: pemValue('fr-backend-cert'),
+      backend_key: pemValue('fr-backend-key'),
+      cert: pemValue('f-cert'), key: pemValue('f-key'), client_ca: pemValue('f-client-ca'),
+    };
+  }
+  busy(ev.target.querySelector('button[type=submit]'),
+    api('POST', '/api/resources', res).then(() => { dlg.close(); refresh(); })
+      .catch(err => toast('创建失败：' + err)));
+  return false;
+}
+
+/* ================= 资源表格（按 id 增量更新，不整体重建） ================= */
+
+const rowMap = new Map(); // id → <tr>，刷新只更新单元格内容与顺序
+
+function summary(r) {
+  if (r.type === 'forward' && r.forward) {
+    const f = r.forward;
+    const parts = [];
+    if (f.user) parts.push('单用户认证');
+    if (f.users && f.users.length) parts.push(`用户 ×${f.users.length}`);
+    if (f.upstream) parts.push('链: ' + f.upstream.replace(/\/\/[^@]*@/, '//***@'));
+    if (f.upstream_ca || f.upstream_cert) parts.push('上游 TLS');
+    if (f.cert) parts.push(f.client_ca ? '监听 mTLS' : '监听 TLS');
+    return parts.join(' · ') || '开放代理（无认证、无链）';
+  }
+  if (r.type === 'reverse' && r.reverse) {
+    const v = r.reverse;
+    const parts = [];
+    if (v.backends) parts.push('backends ×' + v.backends.length + (v.backends[0] ? `（${v.backends[0]}${v.backends.length > 1 ? ' …' : ''}）` : ''));
+    if (v.backend_ca || v.backend_cert) parts.push('backend TLS');
+    if (v.cert) parts.push(v.client_ca ? '监听 mTLS' : '监听 TLS');
+    return parts.join(' · ');
+  }
+  return '';
+}
+
+function buildRow() {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="c-name"></td>
+    <td class="c-type"></td>
+    <td class="mono c-addr"></td>
+    <td class="c-status"><span class="badge"></span><span class="err-text" hidden></span></td>
+    <td class="mono c-req"></td>
+    <td class="mono c-traffic"></td>
+    <td class="mono cell-ellipsis c-cfg"></td>
+    <td><div class="actions">
+      <button class="small" data-act="users" hidden>用户</button>
+      <button class="small" data-act="metrics">监控</button>
+      <button class="small" data-act="toggle"></button>
+      <button class="small danger" data-act="del">删除</button>
+    </div></td>`;
+  tr._els = {
+    name: tr.querySelector('.c-name'),
+    type: tr.querySelector('.c-type'),
+    addr: tr.querySelector('.c-addr'),
+    badge: tr.querySelector('.badge'),
+    err: tr.querySelector('.err-text'),
+    req: tr.querySelector('.c-req'),
+    traffic: tr.querySelector('.c-traffic'),
+    cfg: tr.querySelector('.c-cfg'),
+    users: tr.querySelector('[data-act=users]'),
+    toggle: tr.querySelector('[data-act=toggle]'),
+  };
+  tr._els.toggle.onclick = () => {
+    const d = tr._data;
+    api('POST', `/api/resources/${d.id}/${d.status === 'running' ? 'stop' : 'start'}`)
+      .then(refresh).catch(e => toast(e));
+  };
+  tr._els.users.onclick = () => openUsers(tr._data);
+  tr.querySelector('[data-act=metrics]').onclick = () => openMetrics(tr._data);
+  tr.querySelector('[data-act=del]').onclick = () => {
+    const d = tr._data;
+    if (!confirm(`删除资源「${d.name}」？配置将一并移除。`)) return;
+    api('DELETE', '/api/resources/' + d.id).then(refresh).catch(e => toast(e));
+  };
+  return tr;
+}
+
+function updateRow(tr, r) {
+  tr._data = r;
+  const e = tr._els;
+  e.name.textContent = r.name;
+  e.type.textContent = r.type === 'forward' ? '正向' : '反向';
+  e.addr.textContent = r.address;
+  e.badge.className = 'badge ' + r.status;
+  e.badge.textContent = statusText(r.status);
+  if (r.error) {
+    e.err.hidden = false;
+    e.err.textContent = r.error;
+    e.err.title = r.error;
+  } else {
+    e.err.hidden = true;
+  }
+  e.req.textContent = r.requests ?? 0;
+  e.traffic.textContent = `${fmtBytes(r.bytes_in)} / ${fmtBytes(r.bytes_out)}`;
+  const cfg = summary(r);
+  e.cfg.textContent = cfg;
+  e.cfg.title = cfg;
+  e.users.hidden = r.type !== 'forward';
+  e.toggle.textContent = r.status === 'running' ? '停止' : '启动';
+}
+
+function render(list) {
+  const tbody = $('rows');
+  const seen = new Set();
+  for (const r of list) {
+    seen.add(r.id);
+    let tr = rowMap.get(r.id);
+    if (!tr) {
+      tr = buildRow();
+      rowMap.set(r.id, tr);
+    }
+    updateRow(tr, r);
+    // 已在位且顺序正确的行不会产生 DOM 移动；新行/乱序行才调整位置
+    tbody.appendChild(tr);
+  }
+  for (const [id, tr] of Array.from(rowMap)) {
+    if (!seen.has(id)) {
+      tr.remove();
+      rowMap.delete(id);
+    }
+  }
+  $('empty').hidden = list.length > 0;
+  const running = list.filter(r => r.status === 'running').length;
+  $('count-hint').textContent = list.length ? `${list.length} 个资源 · ${running} 个运行中` : '';
+}
+
+function refresh(silent) {
+  return api('GET', '/api/resources', undefined, silent ? { silent: true } : undefined)
+    .then(render).catch(e => toast('刷新失败：' + e));
+}
+
+/* ================= 用户管理 ================= */
+
+function openUsers(r) {
+  currentId = r.id;
+  $('users-title').textContent = `认证用户 — ${r.name}`;
+  loadUsers();
+  usersDlg.showModal();
+}
+
+function loadUsers() {
+  api('GET', `/api/resources/${currentId}/users`).then(users => {
+    if (!Array.isArray(users)) users = []; // 服务端 nil slice 会序列化为 null
+    const box = $('users-list');
+    box.innerHTML = users.length ? '' : '<div style="padding:18px;text-align:center;color:var(--muted);font-size:12.5px">暂无用户（未启用认证）</div>';
+    for (const name of users) {
+      const row = document.createElement('div');
+      row.className = 'user-row';
+      row.innerHTML = `<span class="name mono"></span><button class="small danger">删除</button>`;
+      row.querySelector('.name').textContent = name;
+      row.querySelector('button').onclick = () => {
+        if (!confirm(`删除用户「${name}」？其新请求将被拒绝。`)) return;
+        api('DELETE', `/api/resources/${currentId}/users/${encodeURIComponent(name)}`)
+          .then(loadUsers).catch(e => toast(e));
+      };
+      box.appendChild(row);
+    }
+  }).catch(e => toast(e));
+}
+
+function addUser(ev) {
+  const user = $('nu-user').value.trim();
+  const password = $('nu-password').value;
+  if (!user || !password) { toast('用户名与密码不能为空'); return; }
+  busy(ev.target,
+    api('POST', `/api/resources/${currentId}/users`, { user, password })
+      .then(() => { $('nu-user').value = ''; $('nu-password').value = ''; loadUsers(); })
+      .catch(e => toast('添加失败：' + e)));
+}
+
+/* ================= 运行监控 ================= */
+
+let metricsTimer = null;
+
+function openMetrics(r) {
+  currentId = r.id;
+  $('metrics-title').textContent = `运行监控 — ${r.name}`;
+  $('metrics-body').innerHTML = '<div class="empty">加载中…</div>';
+  loadMetrics();
+  metricsDlg.showModal();
+  clearInterval(metricsTimer);
+  metricsTimer = setInterval(() => { if (metricsDlg.open) loadMetrics(true); }, 2000);
+}
+
+metricsDlg.addEventListener('close', () => clearInterval(metricsTimer));
+
+function loadMetrics(silent) {
+  api('GET', `/api/resources/${currentId}/metrics`, undefined, silent ? { silent: true } : undefined).then(view => {
+    const users = Object.entries(view.by_user || {}).sort((a, b) => b[1] - a[1]);
+    const statuses = Object.entries(view.by_status || {}).sort((a, b) => a[0].localeCompare(b[0]));
+    const recent = view.recent || [];
+
+    // 保留“最近请求”滚动位置，避免刷新后跳回顶部
+    const prev = $('recent-box');
+    const savedTop = prev ? prev.scrollTop : 0;
+
+    $('metrics-body').innerHTML = `
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="label">启动时间</div><div class="value" style="font-size:13.5px">${fmtTime(view.started_at)}</div></div>
+        <div class="stat-tile"><div class="label">总请求数</div><div class="value">${view.requests}</div></div>
+        <div class="stat-tile"><div class="label">客户端 → 目标</div><div class="value" style="font-size:15px">${fmtBytes(view.bytes_in)}</div></div>
+        <div class="stat-tile"><div class="label">目标 → 客户端</div><div class="value" style="font-size:15px">${fmtBytes(view.bytes_out)}</div></div>
+      </div>
+      <div class="two-col">
+        <div>
+          <div class="sub-title">按用户（请求数）</div>
+          <div class="side-box">${users.length
+            ? `<table class="mini-table">${users.map(([u, n]) => `<tr><td class="mono">${escapeHTML(u)}</td><td class="mono" style="text-align:right">${n}</td></tr>`).join('')}</table>`
+            : '<div style="padding:14px;color:var(--muted);font-size:12.5px">无（未启用认证或暂无请求）</div>'}</div>
+        </div>
+        <div>
+          <div class="sub-title">按状态码</div>
+          <div class="side-box">${statuses.length
+            ? `<table class="mini-table">${statuses.map(([s, n]) => `<tr><td class="mono">${escapeHTML(s)}</td><td class="mono" style="text-align:right">${n}</td></tr>`).join('')}</table>`
+            : '<div style="padding:14px;color:var(--muted);font-size:12.5px">暂无</div>'}</div>
+        </div>
+      </div>
+      <div class="sub-title">最近请求（${recent.length} 条，最新在前）</div>
+      <div id="recent-box">
+        <table class="mini-table">
+          <tr><th style="width:150px">时间</th><th style="width:110px">用户</th><th style="width:80px">方法</th><th>目标</th><th style="width:56px">状态</th></tr>
+          ${recent.map(q => `<tr>
+            <td class="mono">${fmtTime(q.time)}</td>
+            <td>${escapeHTML(q.user) || '<span class="muted">—</span>'}</td>
+            <td>${escapeHTML(q.method)}</td>
+            <td class="mono" style="word-break:break-all">${escapeHTML(q.url)}</td>
+            <td class="mono">${q.status || '—'}</td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">暂无请求</td></tr>'}
+        </table>
+      </div>`;
+
+    const box = $('recent-box');
+    if (box) box.scrollTop = savedTop;
+  }).catch(e => toast('加载监控失败：' + e));
+}
+
+setInterval(() => {
+  if ($('app-view').style.display !== 'none') refresh(true); // 轮询静默：不闪加载条
+}, 3000);
+</script>
+</body>
+</html>
