@@ -89,6 +89,13 @@ var forwardCmd = &cobra.Command{
 			IdleTimeout:       90 * time.Second,
 			TLSConfig:         tlsConf,
 		}
+		// CONNECT 隧道依赖 Hijack 劫持连接，而 HTTP/2 的
+		// ResponseWriter 不实现 http.Hijacker，隧道无法建立（浏览器
+		// 会因拿不到 200 而报握手/代理错误）。显式声明只支持
+		// HTTP/1.1，TLS ALPN 因此只协商 http/1.1。
+		protocols := new(http.Protocols)
+		protocols.SetHTTP1(true)
+		srv.Protocols = protocols
 
 		slog.Info("proxy listening",
 			"address", address,
