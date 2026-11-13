@@ -1,4 +1,0 @@
-# 客户端证书的扩展配置（对上游/管理端 mTLS 时出示）。
-# EKU 必须是 clientAuth，与服务端证书（serverAuth）分开，不可混用。
-extendedKeyUsage = clientAuth
-keyUsage = digitalSignature

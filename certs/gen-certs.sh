@@ -31,3 +31,5 @@ rm -f *.csr *.srl
 openssl verify -CAfile ca.pem server.pem client.pem
 echo "证书已生成：$(pwd)（SAN 见 server.ext）"
 
+openssl pkcs12 -export -out client.pfx -inkey client.key -in client.pem -passout pass:123456
+echo "浏览器mTLS客户端证书已生成 密码123456"
