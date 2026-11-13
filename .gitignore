@@ -5,3 +5,5 @@
 *.json
 open-proxy*
 *.pfx
+*.csr
+*.srl
