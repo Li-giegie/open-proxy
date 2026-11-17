@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Li-giegie/open-proxy/internal/testutil"
+	"github.com/Li-giegie/open-proxy/internal/netutil"
 )
 
 // newTLSBackend 启动一个带自定义 TLS 配置的测试 backend。
@@ -23,8 +23,8 @@ func newTLSBackend(t *testing.T, tlsConf *tls.Config, h http.HandlerFunc) *httpt
 // TestBackendTLS 验证出站客户端信任自定义 CA：自签证书的 https backend
 // 在配置 CAPEM 后可正常转发。
 func TestBackendTLS(t *testing.T) {
-	caPEM, ca, caKey := testutil.GenCA(t)
-	srvCertPEM, srvKeyPEM := testutil.GenLeaf(t, ca, caKey, "backend", true)
+	caPEM, ca, caKey := netutil.GenCA(t)
+	srvCertPEM, srvKeyPEM := netutil.GenLeaf(t, ca, caKey, "backend", true)
 	srvCert, err := tls.X509KeyPair(srvCertPEM, srvKeyPEM)
 	if err != nil {
 		t.Fatal(err)
@@ -51,8 +51,8 @@ func TestBackendTLS(t *testing.T) {
 
 // TestBackendTLSUntrusted 验证默认不信任自签证书：不配 CA 时转发失败 502。
 func TestBackendTLSUntrusted(t *testing.T) {
-	_, ca, caKey := testutil.GenCA(t)
-	srvCertPEM, srvKeyPEM := testutil.GenLeaf(t, ca, caKey, "backend", true)
+	_, ca, caKey := netutil.GenCA(t)
+	srvCertPEM, srvKeyPEM := netutil.GenLeaf(t, ca, caKey, "backend", true)
 	srvCert, err := tls.X509KeyPair(srvCertPEM, srvKeyPEM)
 	if err != nil {
 		t.Fatal(err)
@@ -80,9 +80,9 @@ func TestBackendTLSUntrusted(t *testing.T) {
 // TestBackendMTLS 验证出站 mTLS：backend 要求并校验客户端证书，
 // 反向代理通过 CertPEM/KeyPEM 出示证书后握手成功。
 func TestBackendMTLS(t *testing.T) {
-	caPEM, ca, caKey := testutil.GenCA(t)
-	srvCertPEM, srvKeyPEM := testutil.GenLeaf(t, ca, caKey, "backend", true)
-	cliCertPEM, cliKeyPEM := testutil.GenLeaf(t, ca, caKey, "proxy-client", false)
+	caPEM, ca, caKey := netutil.GenCA(t)
+	srvCertPEM, srvKeyPEM := netutil.GenLeaf(t, ca, caKey, "backend", true)
+	cliCertPEM, cliKeyPEM := netutil.GenLeaf(t, ca, caKey, "proxy-client", false)
 
 	srvCert, err := tls.X509KeyPair(srvCertPEM, srvKeyPEM)
 	if err != nil {

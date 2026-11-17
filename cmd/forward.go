@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Li-giegie/open-proxy/internal/httpproxy"
-	"github.com/Li-giegie/open-proxy/internal/proxycfg"
+	"github.com/Li-giegie/open-proxy/internal/netutil"
 )
 
 // forwardCmd 启动 HTTP/HTTPS 正向代理。子命令按角色/协议命名：
@@ -24,6 +24,9 @@ var forwardCmd = &cobra.Command{
 	Use:   "forward",
 	Short: "HTTP/HTTPS 正向代理",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := loadFlagsFromConfig(cmd); err != nil {
+			return err
+		}
 		address, _ := cmd.Flags().GetString("address")
 		user, _ := cmd.Flags().GetString("user")
 		password, _ := cmd.Flags().GetString("password")
@@ -48,7 +51,7 @@ var forwardCmd = &cobra.Command{
 		}
 
 		// 代理链：出站流量（HTTP 转发与 CONNECT 隧道）先经上游代理转发
-		upstreamURL, err := proxycfg.UpstreamURL(upstream, upstreamUser, upstreamPassword)
+		upstreamURL, err := netutil.UpstreamURL(upstream, upstreamUser, upstreamPassword)
 		if err != nil {
 			return err
 		}
@@ -59,13 +62,13 @@ var forwardCmd = &cobra.Command{
 		var upstreamTLS *tls.Config
 		if upstreamCAFile != "" || upstreamCertFile != "" || upstreamKeyFile != "" {
 			var err error
-			upstreamTLS, err = proxycfg.ClientTLS(upstreamCAFile, upstreamCertFile, upstreamKeyFile)
+			upstreamTLS, err = netutil.ClientTLS(upstreamCAFile, upstreamCertFile, upstreamKeyFile)
 			if err != nil {
 				return fmt.Errorf("配置上游 TLS: %w", err)
 			}
 		}
 
-		tlsConf, err := proxycfg.ServerTLS(certFile, keyFile, clientCAFile)
+		tlsConf, err := netutil.ServerTLS(certFile, keyFile, clientCAFile)
 		if err != nil {
 			return err
 		}
@@ -89,6 +92,11 @@ var forwardCmd = &cobra.Command{
 			IdleTimeout:       90 * time.Second,
 			TLSConfig:         tlsConf,
 		}
+		// CONNECT 隧道依赖 Hijack 劫持连接，而 HTTP/2 的
+		// ResponseWriter 不实现 http.Hijacker，隧道无法建立（浏览器
+		// 会因拿不到 200 而报握手/代理错误）。显式声明只支持
+		// HTTP/1.1，TLS ALPN 因此只协商 http/1.1。
+		srv.Protocols = httpproxy.HTTP1OnlyProtocols()
 
 		slog.Info("proxy listening",
 			"address", address,
@@ -107,6 +115,7 @@ var forwardCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(forwardCmd)
+	forwardCmd.Flags().StringP("config", "c", "", "JSON 配置文件（键名与 flag 一致，与命令行参数二选一，示例见 configs/forward.example.json）")
 	forwardCmd.Flags().StringP("address", "a", ":1080", "监听地址")
 	forwardCmd.Flags().String("user", "", "代理认证用户名（与 --password 一起启用 Basic 认证）")
 	forwardCmd.Flags().String("password", "", "代理认证密码")

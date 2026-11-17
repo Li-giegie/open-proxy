@@ -1,10 +1,4 @@
-// Package proxycfg 集中代理配置的构造逻辑：TLS（服务端/客户端）与
-// 上游代理 URL 解析。命令行（cmd）与管理中心（internal/admin）共用，
-// 保证两处的校验规则一致。
-//
-// TLS 配置有两层入口：内容版（*FromPEM，直接给 PEM 字节，管理中心
-// 上传/粘贴走这里）与路径版（读文件后委托内容版，CLI flag 走这里）。
-package proxycfg
+package netutil
 
 import (
 	"crypto/tls"

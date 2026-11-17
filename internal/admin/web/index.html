@@ -12,6 +12,7 @@
     --green: #16a34a; --green-bg: #e6f7ed;
     --red: #dc2626; --red-bg: #fdeeee;
     --amber: #d97706; --amber-bg: #fdf3e3;
+    --sidebar-w: 232px;
     --shadow: 0 1px 2px rgba(31,44,61,.05), 0 6px 24px rgba(31,44,61,.07);
   }
   * { box-sizing: border-box; }
@@ -90,30 +91,72 @@
   .login-btn { width: 100%; padding: 10px; font-size: 14.5px; border-radius: 8px; }
   #login-error { color: var(--red); font-size: 12.5px; min-height: 18px; margin-bottom: 6px; }
 
-  /* ---------- 应用视图 ---------- */
-  #app-view { display: none; min-height: 100vh; flex-direction: column; }
-  nav {
-    display: flex; align-items: center; gap: 12px;
-    background: var(--panel); border-bottom: 1px solid var(--border-soft);
-    padding: 0 36px; height: 56px; position: sticky; top: 0; z-index: 5;
-  }
-  nav .dot {
-    width: 28px; height: 28px; border-radius: 8px; background: var(--accent);
-    color: #fff; display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 12px;
-  }
-  nav .brand { font-weight: 600; font-size: 15px; margin-right: auto; }
-  nav .user-chip {
-    display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px;
-    background: #f5f7fb; border: 1px solid var(--border-soft); border-radius: 15px; padding: 3px 14px 3px 8px;
-  }
-  nav .user-chip .avatar {
-    width: 22px; height: 22px; border-radius: 50%; background: var(--accent-weak);
-    color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
-  }
-  main { width: 100%; max-width: 1280px; margin: 0 auto; padding: 26px 36px 48px; }
+  /* ---------- 应用视图：左侧菜单 + 右侧内容 ---------- */
+  #app-view { display: none; min-height: 100vh; }
 
-  .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
+  .sidebar {
+    width: var(--sidebar-w); flex: none; position: sticky; top: 0;
+    height: 100vh; display: flex; flex-direction: column;
+    background: var(--panel); border-right: 1px solid var(--border-soft);
+    z-index: 10;
+  }
+  .sidebar .brand {
+    display: flex; align-items: center; gap: 11px;
+    padding: 20px 20px 16px; border-bottom: 1px solid var(--border-soft);
+  }
+  .sidebar .brand .dot {
+    width: 32px; height: 32px; border-radius: 9px; background: var(--accent);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; flex: none;
+  }
+  .sidebar .brand h1 { margin: 0; font-size: 15.5px; line-height: 1.3; }
+  .sidebar .brand .sub { margin: 0; font-size: 11px; color: var(--muted); }
+
+  .menu { flex: 1; overflow: auto; padding: 14px 12px; }
+  .menu .group-label {
+    font-size: 11px; color: var(--muted); letter-spacing: .8px;
+    padding: 6px 10px 6px; margin-top: 4px;
+  }
+  .menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 8px; cursor: pointer;
+    color: #5a6b82; font-size: 13.5px; margin-bottom: 2px;
+    border: 1px solid transparent; user-select: none;
+    transition: background .12s, color .12s;
+  }
+  .menu-item .icon { width: 20px; text-align: center; font-size: 14px; flex: none; }
+  .menu-item .cnt { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+  .menu-item:hover { background: #f5f8fd; color: var(--text); }
+  .menu-item.active {
+    background: var(--accent-weak); color: var(--accent); font-weight: 600;
+    border-color: #d8e4ff;
+  }
+  .menu-item.active .cnt { color: var(--accent); }
+
+  .sidebar .foot {
+    border-top: 1px solid var(--border-soft); padding: 14px 16px;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .sidebar .foot .avatar {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--accent-weak);
+    color: var(--accent); display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex: none;
+  }
+  .sidebar .foot .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: #5a6b82; }
+
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .page-head {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--panel); border-bottom: 1px solid var(--border-soft);
+    padding: 15px 32px;
+  }
+  .page-head h2 { margin: 0; font-size: 17px; }
+  .page-head .page-sub { margin: 1px 0 0; color: var(--muted); font-size: 12.5px; }
+  .page-head .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  main { flex: 1; width: 100%; max-width: 1280px; margin: 0 auto; padding: 24px 32px 48px; }
+
+  .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
   .toolbar .hint { margin-left: auto; color: var(--muted); font-size: 12.5px; }
 
   .table-wrap {
@@ -167,6 +210,30 @@
     font: 11px Consolas, monospace; resize: vertical; line-height: 1.5;
   }
   .pem-row textarea:focus { outline: none; border-color: var(--accent); background: #fff; }
+  /* PEM 行的按钮列：水平排列（选择文件、证书管理并排），固定宽度——
+     私钥行没有证书管理按钮时也保持同宽，各行 textarea 宽度一致 */
+  .pem-row .pem-btns {
+    display: flex; flex-direction: row; gap: 4px; flex: none; width: 176px;
+  }
+  .pem-row .pem-btns .file-btn, .pem-row .pem-btns button.small {
+    width: 86px; box-sizing: border-box; padding: 7px 0; font-size: 12px;
+    text-align: center; line-height: 1.5; white-space: nowrap; margin: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pem-row .pem-btns .file-btn { position: relative; overflow: hidden; }
+  .pem-row .pem-btns .file-btn input { position: absolute; left: -9999px; }
+  /* 「证书管理」选择按钮：accent 色系，与中性的「选择文件」区分 */
+  .pem-row button.pick-btn, button.pick-btn {
+    background: var(--accent-weak); color: var(--accent); border-color: #c9d9ff;
+  }
+  .pem-row button.pick-btn:hover, button.pick-btn:hover {
+    background: #e0ebff; color: var(--accent); border-color: var(--accent);
+  }
+  /* pem-row 内的「证书管理」等 small 按钮与「选择文件」file-btn 尺寸一致 */
+  .pem-row button.small {
+    flex: none; padding: 7px 12px; font-size: 12px; line-height: 1.5;
+    white-space: nowrap; align-self: flex-start; margin-top: 0;
+  }
   .file-btn {
     position: relative; flex: none; background: #fff; color: var(--text);
     border: 1px solid var(--border); border-radius: 7px; padding: 7px 12px;
@@ -177,6 +244,86 @@
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
 
+  /* ---- relay 上游动态行：每行地址/权重，可展开独立的 TLS 配置 ---- */
+  .upstream-list { border: 1px solid var(--border-soft); border-radius: 10px; background: #fafbfd; padding: 10px; }
+  .upstream-item { border: 1px solid var(--border-soft); border-radius: 9px; background: #fff; padding: 10px 12px; margin-bottom: 8px; }
+  .upstream-item:last-child { margin-bottom: 0; }
+  .up-row { display: flex; gap: 8px; align-items: center; }
+  .up-row input {
+    background: #f7f9fc; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 10px; font-size: 12.5px;
+  }
+  .up-row input:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .up-row .up-addr { flex: 1; min-width: 0; }
+  .up-row .up-weight { width: 86px; flex: none; }
+  .up-row .up-tls-toggle { flex: none; }
+  .up-row .up-tls-toggle.on {
+    background: var(--accent-weak); color: var(--accent); border-color: #c9d9ff; font-weight: 600;
+  }
+  .up-row .up-del { flex: none; }
+  .up-tls { margin-top: 10px; border-top: 1px dashed var(--border-soft); padding-top: 10px; }
+  .add-upstream { margin-top: 8px; width: 100%; padding: 6px; color: var(--muted); }
+
+  /* ---- 证书工具页 ---- */
+  /* 高级选项折叠区 */
+  details.cert-advanced { margin-top: 10px; border-top: 1px dashed var(--border-soft); padding-top: 10px; }
+  details.cert-advanced summary {
+    cursor: pointer; color: var(--muted); font-size: 12px; user-select: none; margin-bottom: 10px;
+  }
+  details.cert-advanced summary:hover { color: var(--accent); }
+  details.cert-advanced .field { margin-bottom: 10px; }
+  details.cert-advanced input, details.cert-advanced select {
+    width: 100%; background: #f7f9fc; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 11px; font-size: 13px;
+  }
+  details.cert-advanced input:focus, details.cert-advanced select:focus {
+    outline: none; border-color: var(--accent); background: #fff;
+  }
+  .cert-block { margin-top: 18px; }
+  .cert-block-head {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12.5px; color: #5a6b82; margin-bottom: 6px;
+  }
+  .cert-block-head span:last-child { display: flex; gap: 6px; }
+  .cert-block textarea {
+    width: 100%; background: #f7f9fc; color: var(--text);
+    border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px;
+    font: 11px Consolas, monospace; resize: vertical; line-height: 1.5;
+  }
+  .cert-block .hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+  .cert-list-table { width: 100%; min-width: 0; background: #fff; border: 1px solid var(--border-soft); border-radius: 9px; overflow: hidden; }
+  .cert-list-table td, .cert-list-table th { padding: 9px 12px; border-bottom: 1px solid var(--border-soft); text-align: left; font-size: 12.5px; }
+  .cert-list-table th { color: var(--muted); font-weight: 500; white-space: nowrap; background: #fafbfd; }
+  .cert-list-table tr:last-child td { border-bottom: none; }
+  .cert-list-table .actions { display: flex; gap: 6px; }
+  #pick-dlg { width: 620px; max-width: 94vw; max-height: 80vh; overflow: auto; }
+  #pfx-dlg { width: 420px; max-width: 94vw; }
+  #pfx-dlg input {
+    width: 100%; background: #f7f9fc; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 11px; font-size: 13px;
+  }
+  #pfx-dlg input:focus { outline: none; border-color: var(--accent); background: #fff; }
+  #import-dlg .pem-btns { width: auto; }
+  #import-dlg .pem-btns .file-btn { width: 86px; }
+  #import-dlg { width: 640px; max-width: 94vw; max-height: 88vh; overflow: auto; }
+  #import-dlg .pem-row textarea {
+    flex: 1; min-width: 0; background: #f7f9fc; color: var(--text);
+    border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px;
+    font: 11px Consolas, monospace; resize: vertical; line-height: 1.5;
+  }
+  #import-dlg .pem-row textarea:focus { outline: none; border-color: var(--accent); background: #fff; }
+  #import-dlg select {
+    width: 100%; background: #f7f9fc; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 11px; font-size: 13px;
+  }
+  #cert-dlg { width: 560px; max-width: 94vw; max-height: 88vh; overflow: auto; }
+  #cert-dlg select, #cert-dlg input {
+    width: 100%; background: #f7f9fc; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 11px; font-size: 13px;
+  }
+  #cert-dlg select:focus, #cert-dlg input:focus { outline: none; border-color: var(--accent); background: #fff; }
+  #rec-dlg { width: 640px; max-width: 94vw; max-height: 88vh; overflow: auto; }
   #toast {
     position: fixed; bottom: 28px; right: 28px; display: none; z-index: 50;
     background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--red);
@@ -206,7 +353,7 @@
   .stat-tile .label { color: var(--muted); font-size: 11.5px; }
   .stat-tile .value { font-size: 19px; font-family: Consolas, monospace; margin-top: 3px; }
   .sub-title { color: var(--muted); font-size: 12.5px; margin: 16px 0 8px; font-weight: 600; letter-spacing: .3px; }
-  .mini-table { border-collapse: collapse; width: 100%; background: #fff; }
+  .mini-table { border-collapse: collapse; width: 100%; min-width: 0; background: #fff; }
   .mini-table td, .mini-table th { padding: 6px 10px; border-bottom: 1px solid var(--border-soft); text-align: left; font-size: 12.5px; }
   .mini-table th { color: var(--muted); font-weight: 500; white-space: nowrap; background: #fafbfd; }
   .side-box { border: 1px solid var(--border-soft); border-radius: 9px; overflow: auto; max-height: 176px; background: #fff; }
@@ -216,6 +363,17 @@
     border: 1px solid var(--border-soft); border-radius: 9px; overflow: auto; background: #fff;
   }
   #recent-box .mini-table tr:last-child td { border-bottom: none; }
+
+  /* ---- 窄屏：侧栏收窄为图标 ---- */
+  @media (max-width: 1000px) {
+    :root { --sidebar-w: 64px; }
+    .sidebar .brand h1, .sidebar .brand .sub, .menu-item .label, .menu-item .cnt,
+    .sidebar .foot .name { display: none; }
+    .sidebar .brand { justify-content: center; padding: 18px 0 14px; }
+    .menu-item { justify-content: center; padding: 10px 0; }
+    .sidebar .foot { justify-content: center; }
+    main { padding: 20px 18px 40px; }
+  }
 </style>
 </head>
 <body>
@@ -224,7 +382,7 @@
 <div id="login-view">
   <div class="login-card">
     <div class="login-brand"><div class="dot">OP</div><h1>open-proxy 管理中心</h1></div>
-    <p class="login-sub">登录后管理正向 / 反向代理资源</p>
+    <p class="login-sub">登录后管理代理与中继资源</p>
     <form onsubmit="return doLogin(event)">
       <label>用户名</label>
       <input id="login-user" autocomplete="username" autofocus>
@@ -236,40 +394,253 @@
   </div>
 </div>
 
-<!-- ================= 应用视图 ================= -->
+<!-- ================= 应用视图：左菜单 + 右内容 ================= -->
 <div id="app-view">
-  <nav>
-    <div class="dot">OP</div>
-    <span class="brand">open-proxy 管理中心</span>
-    <div class="user-chip"><span class="avatar" id="user-avatar">A</span><span id="user-name">admin</span></div>
-    <button class="small" onclick="doLogout()">退出登录</button>
-  </nav>
-  <main>
-    <div class="toolbar">
-      <button class="primary" onclick="openCreate('forward')">＋ 新建正向代理</button>
-      <button class="primary" onclick="openCreate('reverse')">＋ 新建反向代理</button>
-      <span class="hint" id="count-hint"></span>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="dot">OP</div>
+      <div><h1>open-proxy</h1><p class="sub">代理管理中心</p></div>
     </div>
-
-    <div class="table-wrap">
-      <table id="tbl">
-        <thead><tr>
-          <th style="width:15%">名称</th><th style="width:7%">类型</th>
-          <th style="width:16%">监听地址</th><th style="width:12%">状态</th>
-          <th style="width:7%">请求</th><th style="width:14%">流量 ↓ / ↑</th>
-          <th>关键配置</th><th style="width:22%">操作</th>
-        </tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-      <div id="empty" class="empty" hidden>暂无代理资源，点击上方按钮创建</div>
+    <nav class="menu" id="menu">
+      <div class="menu-item active" data-view="all" onclick="switchView('all')">
+        <span class="icon">▦</span><span class="label">资源总览</span><span class="cnt" id="cnt-all"></span>
+      </div>
+      <div class="group-label">代理资源</div>
+      <div class="menu-item" data-view="forward" onclick="switchView('forward')">
+        <span class="icon">→</span><span class="label">正向代理</span><span class="cnt" id="cnt-forward"></span>
+      </div>
+      <div class="menu-item" data-view="reverse" onclick="switchView('reverse')">
+        <span class="icon">↔</span><span class="label">反向代理</span><span class="cnt" id="cnt-reverse"></span>
+      </div>
+      <div class="group-label">转发资源</div>
+      <div class="menu-item" data-view="relay" onclick="switchView('relay')">
+        <span class="icon">⇉</span><span class="label">TCP 中继</span><span class="cnt" id="cnt-relay"></span>
+      </div>
+      <div class="menu-item" data-view="socks5" onclick="switchView('socks5')">
+        <span class="icon">S5</span><span class="label">SOCKS5 代理</span><span class="cnt" id="cnt-socks5"></span>
+      </div>
+      <div class="group-label">工具</div>
+      <div class="menu-item" data-view="certs" onclick="switchView('certs')">
+        <span class="icon">✓</span><span class="label">证书管理</span>
+      </div>
+    </nav>
+    <div class="foot">
+      <span class="avatar" id="user-avatar">A</span>
+      <span class="name" id="user-name">admin</span>
+      <button class="small" onclick="doLogout()">退出</button>
     </div>
+  </aside>
 
-    <section class="legend">
-      正向代理：客户端以代理形式访问（绝对 URL / CONNECT），可配置代理链（upstream）、多用户认证与监控。<br>
-      反向代理：客户端直接访问，请求被转发到 backend 列表（轮询负载均衡）。TLS 字段均为 PEM 内容，随资源一起持久化。
-    </section>
-  </main>
+  <div class="content">
+    <div class="page-head">
+      <div>
+        <h2 id="page-title">资源总览</h2>
+        <p class="page-sub" id="page-sub"></p>
+      </div>
+      <div class="actions" id="create-actions"></div>
+    </div>
+    <main>
+      <!-- 资源表格区（类型视图显示） -->
+      <div id="table-area">
+        <div class="toolbar">
+          <span class="hint" id="count-hint"></span>
+        </div>
+
+        <div class="table-wrap">
+          <table id="tbl">
+            <thead><tr>
+              <th style="width:15%">名称</th><th style="width:7%">类型</th>
+              <th style="width:16%">监听地址</th><th style="width:12%">状态</th>
+              <th style="width:7%">请求</th><th style="width:14%">流量 ↓ / ↑</th>
+              <th>关键配置</th><th style="width:22%">操作</th>
+            </tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <div id="empty" class="empty" hidden>暂无资源，点击右上角按钮创建</div>
+        </div>
+
+        <section class="legend" id="legend-box"></section>
+      </div>
+
+      <!-- 证书工具页（独立菜单页） -->
+      <div id="cert-page" hidden>
+        <!-- 主区域：已保存的证书记录（根 CA 与派生证书，创建入口在右上角弹窗） -->
+        <div class="table-wrap">
+          <table class="cert-list-table" style="min-width:0;width:100%">
+            <thead><tr>
+              <th style="width:90px">类型</th><th style="width:22%">名称</th><th>用途/算法</th>
+              <th>签发 CA</th><th style="width:110px">过期时间</th>
+              <th style="width:200px">操作</th>
+            </tr></thead>
+            <tbody id="saved-rows"></tbody>
+          </table>
+          <div id="saved-empty" class="empty" hidden>暂无证书记录，点击右上角「新建证书」开始</div>
+        </div>
+      </div>
+    </main>
+  </div>
 </div>
+
+
+
+
+
+<!-- 证书选择弹窗：从证书管理的已保存记录中选择，填入目标输入 -->
+<dialog id="pick-dlg">
+  <h2 id="pick-title">从证书管理选择</h2>
+  <table class="mini-table cert-list-table">
+    <thead><tr>
+      <th style="width:90px">类型</th><th>名称</th><th>用途/算法</th>
+      <th style="width:110px">过期时间</th><th style="width:70px">操作</th>
+    </tr></thead>
+    <tbody id="pick-rows"></tbody>
+  </table>
+  <div id="pick-empty" class="empty" hidden>证书管理中暂无可用记录</div>
+  <div class="form-actions">
+    <button type="button" onclick="pickDlg.close()">取消</button>
+  </div>
+</dialog>
+
+<!-- PFX 导出弹窗：对已保存的派发证书按口令导出 PKCS#12 -->
+<dialog id="pfx-dlg">
+  <h2 id="pfx-title">导出浏览器 PFX</h2>
+  <form onsubmit="return submitPFXExport(event)">
+    <div class="field"><label>导入口令 *</label>
+      <input id="pfx-pass" required type="password" placeholder="浏览器导入时输入的口令">
+      <div class="hint">导出的 client.pfx 仅含该证书与私钥（不含 CA），双击导入系统/浏览器证书库</div>
+    </div>
+    <div class="form-actions">
+      <button type="button" onclick="pfxDlg.close()">取消</button>
+      <button type="submit" class="primary">导出</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 证书导入弹窗：从文本/文件导入已有 CA 或证书 -->
+<dialog id="import-dlg">
+  <h2 id="import-dlg-title">导入证书</h2>
+  <form onsubmit="return submitCertImport(event)">
+    <div class="field"><label>类型 *</label>
+      <select id="im-kind" onchange="importKindChanged()">
+        <option value="ca">根 CA（导入后可直接签发）</option>
+        <option value="cert">已签发的证书</option>
+      </select>
+    </div>
+
+    <div class="pem-row"><span class="pem-tag">证书</span><textarea id="im-cert" rows="5" placeholder="证书 PEM —— 粘贴或选择文件"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'im-cert')"></label></span></div>
+    <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="im-key" rows="5" placeholder="私钥 PEM —— 粘贴或选择文件"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'im-key')"></label></span></div>
+
+    <div id="im-cert-extra" hidden>
+      <div class="field"><label>签发 CA（可选，关联已保存的记录）</label><select id="im-ca"></select></div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" onclick="importDlg.close()">取消</button>
+      <button type="submit" class="primary">导入</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 证书创建弹窗：根 CA / 签发证书合一 -->
+<dialog id="cert-dlg">
+  <h2 id="cert-dlg-title">新建证书</h2>
+  <form onsubmit="return submitCertCreate(event)">
+    <div class="field"><label>类型 *</label>
+      <select id="nc-kind" onchange="certKindChanged()">
+        <option value="ca">根 CA（自签，可继续派生证书）</option>
+        <option value="cert">签发证书（由已有根 CA 派生）</option>
+      </select>
+    </div>
+
+    <!-- 根 CA 表单 -->
+    <div id="nc-ca-form">
+      <div class="two-col">
+        <div class="field"><label>CA 名称 *</label><input id="nc-ca-cn" required placeholder="如 internal-ca"></div>
+        <div class="field"><label>有效期（天）</label><input id="nc-ca-days" placeholder="3650" inputmode="numeric"></div>
+      </div>
+      <details class="cert-advanced">
+        <summary>高级选项</summary>
+        <div class="two-col">
+          <div class="field"><label>组织（主题 O，逗号分隔）</label><input id="nc-ca-org" placeholder="如 Acme,Infra"></div>
+          <div class="field"><label>算法</label>
+            <select id="nc-algorithm">
+              <option value="">ECDSA（默认）</option>
+              <option value="RSA">RSA</option>
+              <option value="Ed25519">Ed25519</option>
+            </select>
+          </div>
+          <div class="field"><label>ECDSA 曲线</label>
+            <select id="nc-curve">
+              <option value="">P-256（默认）</option>
+              <option value="P-384">P-384</option>
+              <option value="P-521">P-521</option>
+            </select>
+          </div>
+          <div class="field"><label>RSA 位数（算法为 RSA 时生效）</label><input id="nc-rsa-bits" placeholder="2048" inputmode="numeric"></div>
+        </div>
+      </details>
+    </div>
+
+    <!-- 签发证书表单 -->
+    <div id="nc-cert-form" hidden>
+      <div class="field"><label>签发 CA *</label><select id="nc-ca"></select></div>
+      <div class="two-col">
+        <div class="field"><label>证书名称 *</label><input id="nc-cn" required placeholder="客户端为身份名（如 alice），服务端为域名/IP"></div>
+        <div class="field"><label>有效期（天）</label><input id="nc-days" placeholder="3650" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label>用途</label>
+        <select id="nc-usage">
+          <option value="client">客户端证书（mTLS 身份）</option>
+          <option value="server">服务端证书（域名/IP 写入 SAN）</option>
+          <option value="both">双向通用</option>
+        </select>
+      </div>
+      <details class="cert-advanced">
+        <summary>高级选项</summary>
+        <div class="two-col">
+          <div class="field"><label>组织（主题 O，逗号分隔）</label><input id="nc-org" placeholder="如 Acme,Infra"></div>
+          <div class="field"><label>附加 DNS SAN（逗号分隔）</label><input id="nc-dns" placeholder="如 alt.example.com"></div>
+          <div class="field"><label>附加 IP SAN（逗号分隔）</label><input id="nc-ip" placeholder="如 10.0.0.5"></div>
+          <div class="field"><label>导出浏览器 PFX（PKCS#12）</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="nc-pfx" type="checkbox" style="width:auto">
+              <input id="nc-pfx-pass" placeholder="导入口令" style="flex:1;min-width:0">
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" onclick="certDlg.close()">取消</button>
+      <button type="submit" class="primary">创建</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 证书记录查看弹窗 -->
+<dialog id="rec-dlg">
+  <h2 id="rec-title">证书记录</h2>
+  <div class="cert-block">
+    <div class="cert-block-head"><span>证书 PEM</span>
+      <span><button class="small" onclick="copyPEM('rec-cert')">复制</button>
+      <button class="small" onclick="downloadPEM('cert.pem', 'rec-cert')">下载</button></span>
+    </div>
+    <textarea id="rec-cert" rows="6" readonly></textarea>
+  </div>
+  <div class="cert-block">
+    <div class="cert-block-head"><span>私钥 PEM</span>
+      <span><button class="small" onclick="copyPEM('rec-key')">复制</button>
+      <button class="small" onclick="downloadPEM('key.pem', 'rec-key')">下载</button></span>
+    </div>
+    <textarea id="rec-key" rows="6" readonly></textarea>
+    <div class="hint">私钥仅经本页传输，请妥善保管</div>
+  </div>
+  <div class="form-actions">
+    <button type="button" class="danger" id="rec-delete">删除记录</button>
+    <button type="button" class="primary" onclick="recDlg.close()">关闭</button>
+  </div>
+</dialog>
 
 <!-- 创建资源弹窗 -->
 <dialog id="dlg">
@@ -280,13 +651,36 @@
       <div class="field"><label>监听地址 *</label><input id="f-address" required placeholder="127.0.0.1:1080"></div>
     </div>
 
-    <div id="f-forward" hidden>
+    <!-- 顺序约定：本机配置在前（名称/地址、认证、监听端 TLS），上游配置在后 -->
+    <div id="f-forward-local" hidden>
       <div class="field"><label>认证用户名 / 密码（面向客户端，创建后可在“用户”里动态增删）</label>
         <div style="display:flex;gap:8px">
           <input id="ff-user" placeholder="user（可空）">
           <input id="ff-password" placeholder="password（可空）">
         </div>
       </div>
+    </div>
+
+    <div id="f-socks5" hidden>
+      <div class="field"><label>认证用户名 / 密码（RFC 1929，面向客户端）</label>
+        <div style="display:flex;gap:8px">
+          <input id="fs-user" placeholder="user（可空，空为开放代理）">
+          <input id="fs-password" placeholder="password（可空）">
+        </div>
+        <div class="hint">两者必须同时设置；均留空则不启用认证。仅支持 CONNECT 命令</div>
+      </div>
+    </div>
+
+    <div id="f-listen-tls">
+      <div class="field"><label>监听端 TLS（PEM 内容，可用左侧「证书工具」生成）</label>
+        <div class="pem-row"><span class="pem-tag">证书</span><textarea id="f-cert" rows="2" placeholder="服务端证书 —— 粘贴 PEM、选择文件或从证书管理选择"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'f-cert')"></label><button type="button" class="small pick-btn" onclick="openCertPicker('cert', 'f-cert', 'f-key')">证书管理</button></span></div>
+        <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="f-key" rows="2" placeholder="服务端私钥 —— 随证书成对填入，或粘贴/选择文件"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'f-key')"></label></span></div>
+        <div class="pem-row"><span class="pem-tag">CA</span><textarea id="f-client-ca" rows="2" placeholder="客户端 CA（启用 mTLS）—— 粘贴 PEM、选择文件或从证书管理选择"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'f-client-ca')"></label><button type="button" class="small pick-btn" onclick="openCertPicker('ca', 'f-client-ca')">证书管理</button></span></div>
+        <div class="hint">本机访问通常无需填写；内容随资源一起持久化，不依赖服务器磁盘上的证书文件</div>
+      </div>
+    </div>
+
+    <div id="f-forward-up" hidden>
       <div class="field"><label>上游代理（代理链）</label><input id="ff-upstream" placeholder="http://host:port 或 https://host:port（可空）">
         <div class="hint">填写后出站流量经该代理转发；https 上游可配下方 TLS</div></div>
       <div class="field"><label>上游认证（Basic）</label>
@@ -296,10 +690,10 @@
         </div>
       </div>
       <div class="field"><label>上游 TLS（仅 https 上游，PEM 内容）</label>
-        <div class="pem-row"><span class="pem-tag">CA</span><textarea id="ff-upstream-ca" rows="2" placeholder="校验上游证书的 CA —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'ff-upstream-ca')"></label></div>
-        <div class="pem-row"><span class="pem-tag">证书</span><textarea id="ff-upstream-cert" rows="2" placeholder="mTLS 出示的客户端证书 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'ff-upstream-cert')"></label></div>
-        <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="ff-upstream-key" rows="2" placeholder="客户端私钥 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'ff-upstream-key')"></label></div>
-      </div>
+        <div class="pem-row"><span class="pem-tag">证书</span><textarea id="ff-upstream-cert" rows="2" placeholder="mTLS 出示的客户端证书 —— 粘贴 PEM、选择文件或从证书管理选择"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'ff-upstream-cert')"></label><button type="button" class="small pick-btn" onclick="openCertPicker('cert', 'ff-upstream-cert', 'ff-upstream-key')">证书管理</button></span></div>
+        <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="ff-upstream-key" rows="2" placeholder="客户端私钥 —— 随证书成对填入，或粘贴/选择文件"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'ff-upstream-key')"></label></span></div>
+        <div class="pem-row"><span class="pem-tag">CA</span><textarea id="ff-upstream-ca" rows="2" placeholder="校验上游证书的 CA —— 粘贴 PEM、选择文件或从证书管理选择"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'ff-upstream-ca')"></label><button type="button" class="small pick-btn" onclick="openCertPicker('ca', 'ff-upstream-ca')">证书管理</button></span></div>
+            </div>
     </div>
 
     <div id="f-reverse" hidden>
@@ -307,18 +701,17 @@
         <input id="fr-backends" placeholder="http://127.0.0.1:9000, http://127.0.0.1:9001">
       </div>
       <div class="field"><label>backend TLS（PEM 内容）</label>
-        <div class="pem-row"><span class="pem-tag">CA</span><textarea id="fr-backend-ca" rows="2" placeholder="校验 backend 证书的 CA —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'fr-backend-ca')"></label></div>
-        <div class="pem-row"><span class="pem-tag">证书</span><textarea id="fr-backend-cert" rows="2" placeholder="mTLS 出示的客户端证书 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'fr-backend-cert')"></label></div>
-        <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="fr-backend-key" rows="2" placeholder="客户端私钥 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'fr-backend-key')"></label></div>
-      </div>
+        <div class="pem-row"><span class="pem-tag">证书</span><textarea id="fr-backend-cert" rows="2" placeholder="mTLS 出示的客户端证书 —— 粘贴 PEM、选择文件或从证书管理选择"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'fr-backend-cert')"></label><button type="button" class="small pick-btn" onclick="openCertPicker('cert', 'fr-backend-cert', 'fr-backend-key')">证书管理</button></span></div>
+        <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="fr-backend-key" rows="2" placeholder="客户端私钥 —— 随证书成对填入，或粘贴/选择文件"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'fr-backend-key')"></label></span></div>
+        <div class="pem-row"><span class="pem-tag">CA</span><textarea id="fr-backend-ca" rows="2" placeholder="校验 backend 证书的 CA —— 粘贴 PEM、选择文件或从证书管理选择"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'fr-backend-ca')"></label><button type="button" class="small pick-btn" onclick="openCertPicker('ca', 'fr-backend-ca')">证书管理</button></span></div>
+            </div>
     </div>
 
-    <div id="f-listen-tls">
-      <div class="field"><label>监听端 TLS（PEM 内容）</label>
-        <div class="pem-row"><span class="pem-tag">证书</span><textarea id="f-cert" rows="2" placeholder="服务端证书 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'f-cert')"></label></div>
-        <div class="pem-row"><span class="pem-tag">私钥</span><textarea id="f-key" rows="2" placeholder="服务端私钥 —— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.key" onchange="loadPEM(this, 'f-key')"></label></div>
-        <div class="pem-row"><span class="pem-tag">CA</span><textarea id="f-client-ca" rows="2" placeholder="客户端 CA（启用 mTLS）—— 粘贴 PEM 或选择文件"></textarea><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer" onchange="loadPEM(this, 'f-client-ca')"></label></div>
-        <div class="hint">本机访问通常无需填写；内容随资源一起持久化，不依赖服务器磁盘上的证书文件</div>
+    <div id="f-relay" hidden>
+      <div class="field"><label>上游列表 *（每行一个：地址 + 权重；可按行展开独立的 TLS 配置）</label>
+        <div class="upstream-list" id="fx-upstreams"></div>
+        <button type="button" class="add-upstream" onclick="addUpstreamRow()">＋ 添加上游</button>
+        <div class="hint">多上游按权重随机选择，拨号失败自动切换到其余上游；仅拨号阶段切换，透传中不切换</div>
       </div>
     </div>
 
@@ -364,8 +757,34 @@ const $ = id => document.getElementById(id);
 const dlg = $('dlg');
 const usersDlg = $('users-dlg');
 const metricsDlg = $('metrics-dlg');
+const recDlg = $('rec-dlg');
+const certDlg = $('cert-dlg');
+const importDlg = $('import-dlg');
+const pfxDlg = $('pfx-dlg');
+const pickDlg = $('pick-dlg');
 let createType = 'forward';
 let currentId = null;
+
+
+/* ================= 弹窗防误关（文件选择器取消） ================= */
+
+// Chrome 已知行为：模态 <dialog> 内打开原生文件选择器，点"取消"时浏览器
+// 会向 dialog 派发 cancel 事件（等同 ESC），把创建弹窗一并关掉。
+// 对策：文件选择器打开期间拦截 dialog 的 cancel；真实 ESC 键会先产生
+// keydown（文件选择器取消没有），据此区分两种来源。
+let filePickSuppress = false;
+document.addEventListener('click', e => {
+  if (e.target.closest && e.target.closest('input[type=file]')) filePickSuppress = true;
+}, true);
+document.addEventListener('change', e => {
+  if (e.target.matches && e.target.matches('input[type=file]')) filePickSuppress = false;
+}, true);
+document.addEventListener('keydown', () => { filePickSuppress = false; }, true);
+for (const d of [dlg, usersDlg, metricsDlg, recDlg, certDlg, importDlg, pfxDlg, pickDlg]) {
+  if (d) d.addEventListener('cancel', e => {
+    if (filePickSuppress) { e.preventDefault(); filePickSuppress = false; }
+  });
+}
 
 /* ================= 认证 ================= */
 
@@ -490,12 +909,14 @@ function toast(msg) {
   t._timer = setTimeout(() => t.style.display = 'none', 4500);
 }
 
-// loadPEM 把选择的 PEM 文件读入对应 textarea（浏览器本地读取）。
-function loadPEM(input, targetId) {
+// loadPEM 把选择的 PEM 文件读入目标 textarea（浏览器本地读取）。
+// target 可传 id 或 textarea 元素本身（动态生成的上游行用后者）。
+function loadPEM(input, target) {
+  const ta = typeof target === 'string' ? $(target) : target;
+  if (!ta) return;
   const file = input.files && input.files[0];
   if (!file) return;
   file.text().then(text => {
-    const ta = $(targetId);
     ta.value = text.trim();
     ta.title = `${file.name}（${file.size} 字节）已读入`;
     ta.style.borderColor = 'var(--green)';
@@ -528,15 +949,653 @@ function statusText(s) {
   return { running: '运行中', stopped: '已停止', error: '错误' }[s] || s;
 }
 
-/* ================= 创建 ================= */
+/* ================= 视图（左侧菜单） ================= */
+
+// 每个视图：标题、副标题、新建按钮、说明文案
+const views = {
+  all: {
+    title: '资源总览', sub: '全部代理与中继资源',
+    legend: '正向代理：客户端以代理形式访问（绝对 URL / CONNECT），可配置代理链（upstream）、多用户认证与监控。<br>反向代理：客户端直接访问，请求被转发到 backend 列表（轮询负载均衡）。<br>TCP 中继：转发裸 TCP 流量，多上游按权重选择、拨号失败自动切换（failover），本地与上游均支持 TLS/mTLS。<br>SOCKS5 代理：SOCKS5 正向代理（CONNECT），认证为用户名/密码。TLS 字段均为 PEM 内容，随资源一起持久化。',
+    types: ['forward', 'reverse', 'relay', 'socks5'],
+  },
+  forward: {
+    title: '正向代理', sub: '客户端以代理形式访问，支持认证与代理链',
+    legend: '客户端以代理形式访问（绝对 URL / CONNECT），可配置代理链（upstream）、多用户认证与监控。',
+    types: ['forward'],
+  },
+  reverse: {
+    title: '反向代理', sub: '客户端直接访问，转发到 backend 列表',
+    legend: '请求被转发到 backend 列表（轮询负载均衡），backend TLS 支持校验与 mTLS。',
+    types: ['reverse'],
+  },
+  relay: {
+    title: 'TCP 中继', sub: '裸 TCP 转发，多上游加权 + failover',
+    legend: '转发裸 TCP 流量，不解析协议。多上游按权重随机选择，拨号失败自动切换到其余上游（仅拨号阶段切换）。每个上游可独立配置 TLS/mTLS。',
+    types: ['relay'],
+  },
+  socks5: {
+    title: 'SOCKS5 代理', sub: 'SOCKS5 CONNECT 正向代理',
+    legend: 'SOCKS5 正向代理（仅 CONNECT 命令），认证为 RFC 1929 用户名/密码。TLS 字段均为 PEM 内容，随资源一起持久化。',
+    types: ['socks5'],
+  },
+};
+
+let currentView = 'all';
+let lastList = []; // 最近一次拉取的全量数据，切视图时本地过滤
+
+const typeTitles = { forward: '新建正向代理', reverse: '新建反向代理', relay: '新建 TCP 中继', socks5: '新建 SOCKS5 代理' };
+const typeBtnText = { forward: '＋ 新建正向代理', reverse: '＋ 新建反向代理', relay: '＋ 新建 TCP 中继', socks5: '＋ 新建 SOCKS5 代理' };
+// 每个类型在表单里占用的段落（forward 拆成本机/上游两段，中间是共用的监听 TLS）
+const typeSections = {
+  forward: ['f-forward-local', 'f-forward-up'],
+  reverse: ['f-reverse'],
+  relay: ['f-relay'],
+  socks5: ['f-socks5'],
+};
+const typePlaceholders = {
+  forward: '127.0.0.1:1080（端口 0 随机分配）',
+  reverse: '127.0.0.1:8080',
+  relay: '127.0.0.1:9000',
+  socks5: '127.0.0.1:1080',
+};
+
+// switchView 切换左侧菜单：资源视图过滤表格；证书工具是独立页面。
+function switchView(v) {
+  if (!views[v] && v !== 'certs') return;
+  currentView = v;
+  for (const item of $('menu').querySelectorAll('.menu-item')) {
+    item.classList.toggle('active', item.dataset.view === v);
+  }
+
+  const isCerts = v === 'certs';
+  $('cert-page').hidden = !isCerts;
+  $('table-area').hidden = isCerts;
+  if (isCerts) {
+    $('page-title').textContent = '证书管理';
+    $('page-sub').textContent = '根 CA 与派生证书的导入、创建、签发与管理';
+    const actions = $('create-actions');
+    actions.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.className = 'primary';
+    btn.textContent = '＋ 新建证书';
+    btn.onclick = () => openCertCreate();
+    actions.appendChild(btn);
+    const imp = document.createElement('button');
+    imp.textContent = '导入';
+    imp.onclick = () => openCertImport();
+    actions.appendChild(imp);
+    refreshSavedCerts();
+    return;
+  }
+
+  const view = views[v];
+  $('page-title').textContent = view.title;
+  $('page-sub').textContent = view.sub;
+  $('legend-box').innerHTML = view.legend;
+
+  // 新建按钮：总览放四个小按钮，类型页放一个主按钮
+  const actions = $('create-actions');
+  actions.innerHTML = '';
+  for (const t of view.types) {
+    const btn = document.createElement('button');
+    btn.textContent = typeBtnText[t];
+    if (view.types.length === 1) btn.className = 'primary';
+    btn.onclick = () => openCreate(t);
+    actions.appendChild(btn);
+  }
+  render(lastList);
+}
+
+/* ================= 证书工具页 ================= */
+
+// csvList 把逗号分隔输入转为字符串数组（去空白、跳过空项）。
+function csvList(id) {
+  return ($(id).value || '').split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+}
+
+
+/* ================= 证书创建弹窗 ================= */
+
+// openCertCreate 打开创建弹窗：根 CA（自签）或签发证书（由已保存 CA 派生）。
+function openCertCreate() {
+  // 清空上一次输入
+  for (const el of certDlg.querySelectorAll('input,select')) {
+    if (el.type === 'checkbox') el.checked = false; else el.value = '';
+  }
+  for (const el of certDlg.querySelectorAll('details')) el.open = false;
+  $('nc-kind').value = 'ca';
+  $('nc-ca-days').value = '3650';
+  $('nc-days').value = '3650';
+  certKindChanged();
+  loadCAOptions();
+  certDlg.showModal();
+}
+
+// certKindChanged 切换根 CA / 签发证书两段表单与弹窗标题。
+// 隐藏段的所有控件同时禁用：禁用字段不参与约束校验——否则隐藏的
+// required 输入会静默拦截整个表单提交（现象就是"点创建没反应"）。
+function certKindChanged() {
+  const kind = $('nc-kind').value;
+  const caForm = $('nc-ca-form'), certForm = $('nc-cert-form');
+  caForm.hidden = kind !== 'ca';
+  certForm.hidden = kind !== 'cert';
+  for (const el of caForm.querySelectorAll('input,select,button')) el.disabled = kind !== 'ca';
+  for (const el of certForm.querySelectorAll('input,select,button')) el.disabled = kind !== 'cert';
+  $('cert-dlg-title').textContent = kind === 'ca' ? '新建根 CA' : '签发证书';
+}
+
+// loadCAOptions 拉取已保存的 CA 填充签发表单的下拉。
+function loadCAOptions() {
+  api('GET', '/api/cas', undefined, { silent: true }).then(list => {
+    const sel = $('nc-ca');
+    sel.innerHTML = '';
+    if (!list || !list.length) {
+      sel.innerHTML = '<option value="">（暂无已保存的 CA，请先创建根 CA）</option>';
+      return;
+    }
+    for (const ca of list) {
+      const opt = document.createElement('option');
+      opt.value = ca.id;
+      opt.textContent = `${ca.common_name}（${ca.algorithm}，${fmtDay(ca.not_after)} 到期）`;
+      sel.appendChild(opt);
+    }
+  }).catch(() => toast('加载 CA 列表失败'));
+}
+
+// submitCertCreate 提交创建：根 CA 走 /api/cas，签发走 /api/certs/issue
+// （ca_id 引用已保存的 CA）。成功后关闭弹窗并刷新记录表；勾选了 PFX
+// 导出时直接触发下载。
+function submitCertCreate(ev) {
+  ev.preventDefault();
+  const kind = $('nc-kind').value;
+  let request;
+  if (kind === 'ca') {
+    request = api('POST', '/api/cas', {
+      common_name: $('nc-ca-cn').value.trim(),
+      days: parseInt($('nc-ca-days').value, 10) || 0,
+      organization: csvList('nc-ca-org'),
+      algorithm: $('nc-algorithm').value,
+      curve: $('nc-curve').value,
+      rsa_bits: parseInt($('nc-rsa-bits').value, 10) || 0,
+    });
+  } else {
+    const caID = $('nc-ca').value;
+    if (!caID) { toast('请先创建根 CA 再签发证书'); return false; }
+    const body = {
+      ca_id: caID,
+      common_name: $('nc-cn').value.trim(),
+      days: parseInt($('nc-days').value, 10) || 0,
+      organization: csvList('nc-org'),
+      dns_names: csvList('nc-dns'),
+      ips: csvList('nc-ip'),
+      usage: $('nc-usage').value,
+    };
+    if ($('nc-pfx').checked) {
+      const pass = $('nc-pfx-pass').value;
+      if (!pass) { toast('PFX 导入口令不能为空'); return false; }
+      body.pfx_password = pass;
+    }
+    request = api('POST', '/api/certs/issue', body);
+  }
+  busy(ev.target.querySelector('button[type=submit]'),
+    request.then(d => {
+      certDlg.close();
+      refreshSavedCerts(); // 创建完立即刷新证书列表
+      toast(kind === 'ca' ? '根 CA 已创建' : '证书已签发');
+      if (d && d.pfx) downloadPFXBase64(d.pfx);
+    }).catch(err => toast('创建失败：' + err)));
+  return false;
+}
+
+
+/* ================= 证书导入弹窗 ================= */
+
+// openCertImport 打开导入弹窗：类型、证书、私钥、（证书时）CA 关联。
+function openCertImport() {
+  for (const el of importDlg.querySelectorAll('textarea,select')) el.value = '';
+  $('im-kind').value = 'ca';
+  importKindChanged();
+  loadCAOptionsFor($('im-ca'));
+  importDlg.showModal();
+}
+
+// importKindChanged 切换证书段的 CA 关联下拉。
+function importKindChanged() {
+  const kind = $('im-kind').value;
+  $('im-cert-extra').hidden = kind !== 'cert';
+  $('import-dlg-title').textContent = kind === 'ca' ? '导入根 CA' : '导入证书';
+}
+
+// loadCAOptionsFor 把已保存的 CA 填充到指定下拉（含“不关联”项）。
+function loadCAOptionsFor(sel) {
+  api('GET', '/api/cas', undefined, { silent: true }).then(list => {
+    sel.innerHTML = '<option value="">（不关联，按证书签发者记录）</option>';
+    for (const ca of (list || [])) {
+      const opt = document.createElement('option');
+      opt.value = ca.id;
+      opt.textContent = `${ca.common_name}（${ca.algorithm}）`;
+      sel.appendChild(opt);
+    }
+  }).catch(() => {});
+}
+
+// submitCertImport 提交导入：根 CA 走 /api/cas/import，证书走
+// /api/certs/import。成功后关闭并刷新列表。
+function submitCertImport(ev) {
+  ev.preventDefault();
+  const cert = $('im-cert').value.trim();
+  const key = $('im-key').value.trim();
+  if (!cert || !key) { toast('证书与私钥 PEM 不能为空'); return false; }
+  const kind = $('im-kind').value;
+  const body = kind === 'ca'
+    ? { cert, key }
+    : { cert, key, ca_id: $('im-ca').value || '' };
+  const url = kind === 'ca' ? '/api/cas/import' : '/api/certs/import';
+  busy(ev.target.querySelector('button[type=submit]'),
+    api('POST', url, body).then(() => {
+      importDlg.close();
+      refreshSavedCerts();
+      toast(kind === 'ca' ? '根 CA 已导入' : '证书已导入');
+    }).catch(err => toast('导入失败：' + err)));
+  return false;
+}
+
+// downloadPFXBase64 下载 base64 的 PKCS#12。
+function downloadPFXBase64(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const blob = new Blob([bytes], { type: 'application/x-pkcs12' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'client.pfx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// copyPEM 复制指定文本框的内容。
+function copyPEM(id) {
+  const text = $(id).value;
+  navigator.clipboard.writeText(text)
+    .then(() => toast('已复制到剪贴板'))
+    .catch(() => {
+      // 剪贴板 API 不可用时退化为选中，便于手动复制
+      $(id).select();
+      toast('请按 Ctrl+C 复制');
+    });
+}
+
+// downloadPEM 把指定文本框的内容保存为文件。
+function downloadPEM(name, id) {
+  const blob = new Blob([$(id).value], { type: 'application/x-pem-file' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+
+/* ================= 已保存的证书记录 ================= */
+
+// refreshSavedCerts 拉取持久化的 CA 与证书记录并渲染两个列表。
+function refreshSavedCerts() {
+  Promise.all([
+    api('GET', '/api/cas', undefined, { silent: true }).catch(() => []),
+    api('GET', '/api/certs', undefined, { silent: true }).catch(() => []),
+  ]).then(([cas, certs]) => renderSavedRecords(cas || [], certs || []));
+}
+
+function fmtDay(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('zh-CN');
+}
+
+// renderSavedRecords 把根 CA 与签发的证书记录合并渲染到一张表
+//（类型列区分：根 CA 徽标 / 用途文案）。
+function renderSavedRecords(cas, certs) {
+  const rows = [];
+  for (const ca of cas) rows.push({ kind: 'ca', rec: ca, at: ca.created_at });
+  for (const c of certs) rows.push({ kind: 'cert', rec: c, at: c.created_at });
+  rows.sort((a, b) => new Date(b.at) - new Date(a.at)); // 新创建的在前
+
+  const box = $('saved-rows');
+  box.innerHTML = '';
+  for (const { kind, rec } of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td></td>
+      <td class="mono"></td>
+      <td></td>
+      <td></td>
+      <td class="mono"></td>
+      <td><div class="actions">
+        <button class="small">查看</button>
+        <button class="small">下载</button>
+        <button class="small pfx-btn" style="display:none">PFX</button>
+        <button class="small danger">删除</button>
+      </div></td>`;
+    const cells = tr.querySelectorAll('td');
+    // 类型列：根 CA 用徽标突出，叶子证书显示用途
+    cells[0].textContent = kind === 'ca'
+      ? '根 CA'
+      : ({ client: '证书·客户端', server: '证书·服务端', both: '证书·双向' }[rec.usage] || '证书');
+    cells[1].textContent = rec.common_name;
+    cells[2].textContent = kind === 'ca' ? (rec.algorithm || '—') : (rec.usage || '—');
+    cells[3].textContent = kind === 'ca' ? '—（自签根）' : (rec.ca_name || '—');
+    cells[4].textContent = fmtDay(rec.not_after);
+    const btns = tr.querySelectorAll('button');
+    btns[0].onclick = () => viewRecord(kind, rec);
+    btns[1].onclick = () => downloadRecord(kind, rec);
+    btns[3].onclick = () => deleteRecord(kind, rec);
+    if (kind === 'cert') {
+      // 派发的证书：导出浏览器 PFX（PKCS#12）
+      btns[2].style.display = '';
+      btns[2].onclick = () => openPFXExport(rec);
+    }
+    box.appendChild(tr);
+  }
+  $('saved-empty').hidden = rows.length > 0;
+}
+
+// viewRecord 打开记录查看弹窗（证书/私钥 PEM + 复制/下载 + 删除）。
+function viewRecord(kind, rec) {
+  $('rec-title').textContent = (kind === 'ca' ? 'CA — ' : '证书 — ') + (rec.common_name || '');
+  $('rec-cert').value = rec.cert || '';
+  $('rec-key').value = rec.key || '';
+  const del = $('rec-delete');
+  del.onclick = () => { deleteRecord(kind, rec); recDlg.close(); };
+  recDlg.showModal();
+}
+
+
+
+/* ================= PFX 导出（已保存的派发证书） ================= */
+
+let pfxTarget = null; // 待导出的证书记录
+
+// openPFXExport 打开口令弹窗。
+function openPFXExport(rec) {
+  pfxTarget = rec;
+  $('pfx-pass').value = '';
+  $('pfx-title').textContent = '导出浏览器 PFX — ' + (rec.common_name || '');
+  pfxDlg.showModal();
+}
+
+// submitPFXExport 按口令导出记录的 PKCS#12 并下载。
+function submitPFXExport(ev) {
+  ev.preventDefault();
+  if (!pfxTarget) return false;
+  const pass = $('pfx-pass').value;
+  if (!pass) { toast('导入口令不能为空'); return false; }
+  busy(ev.target.querySelector('button[type=submit]'),
+    api('POST', `/api/certs/${pfxTarget.id}/pfx`, { password: pass })
+      .then(d => {
+        if (!d || !d.pfx) throw '返回内容不完整';
+        pfxDlg.close();
+        downloadPFXBase64(d.pfx);
+        toast('PFX 已导出（口令即刚才输入的口令）');
+      }).catch(err => toast('导出失败：' + err)));
+  return false;
+}
+
+
+/* ================= 证书选择（资源 TLS 输入 ← 证书管理记录） ================= */
+
+// pickTarget 记录选择后要填充的目标：certEl 必填，keyEl 可选
+//（选证书时一并填私钥；选 CA 时只填证书）。
+let pickTarget = null;
+
+// openCertPicker 打开选择器。kind：'ca'（只列根 CA）或 'cert'（只列
+// 签发的证书）；certEl/keyEl 为目标输入的 id 或元素本身（relay 动态行
+// 传元素）。
+function openCertPicker(kind, certEl, keyEl) {
+  pickTarget = {
+    kind,
+    certEl: typeof certEl === 'string' ? $(certEl) : certEl,
+    keyEl: keyEl ? (typeof keyEl === 'string' ? $(keyEl) : keyEl) : null,
+  };
+  $('pick-title').textContent = kind === 'ca'
+    ? '选择 CA（填入证书输入）'
+    : '选择证书（证书与私钥一并填入）';
+  const box = $('pick-rows');
+  box.innerHTML = '';
+  $('pick-empty').hidden = true;
+
+  const req = kind === 'ca'
+    ? api('GET', '/api/cas', undefined, { silent: true }).catch(() => [])
+    : api('GET', '/api/certs', undefined, { silent: true }).catch(() => []);
+  req.then(list => {
+    list = list || [];
+    for (const rec of list) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td></td>
+        <td class="mono"></td>
+        <td></td>
+        <td class="mono"></td>
+        <td><button class="small primary">选用</button></td>`;
+      const cells = tr.querySelectorAll('td');
+      cells[0].textContent = kind === 'ca' ? '根 CA' : '证书';
+      cells[1].textContent = rec.common_name;
+      cells[2].textContent = kind === 'ca' ? (rec.algorithm || '—')
+        : ({ client: '客户端', server: '服务端', both: '双向' }[rec.usage] || rec.usage);
+      cells[3].textContent = fmtDay(rec.not_after);
+      tr.querySelector('button').onclick = () => {
+        if (!pickTarget || !pickTarget.certEl) return;
+        pickTarget.certEl.value = rec.cert || '';
+        pickTarget.certEl.style.borderColor = 'var(--green)';
+        pickTarget.certEl.title = '来自证书管理：' + (rec.common_name || '');
+        if (pickTarget.keyEl && rec.key) {
+          pickTarget.keyEl.value = rec.key;
+          pickTarget.keyEl.style.borderColor = 'var(--green)';
+          pickTarget.keyEl.title = '来自证书管理：' + (rec.common_name || '');
+        }
+        pickDlg.close();
+      };
+      box.appendChild(tr);
+    }
+    $('pick-empty').hidden = list.length > 0;
+  });
+  pickDlg.showModal();
+}
+
+// downloadRecord 直接从记录下载证书与私钥（无需打开查看弹窗）。
+// 文件名取记录名称（清洗非法字符）：<名称>.pem / <名称>.key.pem。
+function downloadRecord(kind, rec) {
+  const base = (kind === 'ca' ? 'ca-' : '') + sanitizeFileName(rec.common_name || 'cert');
+  downloadTextFile(base + '.pem', rec.cert || '');
+  if (rec.key) {
+    setTimeout(() => downloadTextFile(base + '.key.pem', rec.key), 350);
+  }
+}
+
+// sanitizeFileName 清洗文件名里的非法字符。
+function sanitizeFileName(name) {
+  return name.replace(/[^A-Za-z0-9.\-_]+/g, '_');
+}
+
+// downloadTextFile 把文本保存为文件（供下载 PEM / 记录用）。
+function downloadTextFile(name, text) {
+  const blob = new Blob([text], { type: 'application/x-pem-file' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// deleteRecord 确认并删除一条持久化记录。
+function deleteRecord(kind, rec) {
+  const label = kind === 'ca' ? `CA「${rec.common_name}」` : `证书「${rec.common_name}」`;
+  if (!confirm(`删除已保存的${label}？记录将从 certs.json 移除（不影响已在使用的资源）。`)) return;
+  const url = kind === 'ca' ? '/api/cas/' + rec.id : '/api/certs/' + rec.id;
+  api('DELETE', url).then(refreshSavedCerts).catch(e => toast(e));
+}
+
+/* ================= 创建 / 编辑 ================= */
+
+let editingId = null;   // null = 创建；否则为正在编辑的资源 ID
+let editingRes = null;  // 编辑中的原始资源（保留 UI 不展示的字段，如 users）
 
 function openCreate(type) {
+  editingId = null;
+  editingRes = null;
   createType = type;
-  $('dlg-title').textContent = type === 'forward' ? '新建正向代理' : '新建反向代理';
-  $('f-forward').hidden = type !== 'forward';
-  $('f-reverse').hidden = type !== 'reverse';
-  $('f-address').placeholder = type === 'forward' ? '127.0.0.1:1080（端口 0 随机分配）' : '127.0.0.1:8080';
+  // 清空上一次（创建或编辑）的输入，避免残留
+  for (const el of $('form').querySelectorAll('input,textarea')) {
+    if (el.type === 'file') continue;
+    el.value = '';
+    el.style.borderColor = '';
+    el.title = '';
+  }
+  $('dlg-title').textContent = typeTitles[type] || type;
+  for (const [t, secs] of Object.entries(typeSections)) {
+    for (const sec of secs) {
+      $(sec).hidden = t !== type;
+    }
+  }
+  $('f-address').placeholder = typePlaceholders[type] || '';
+  $('form').querySelector('button[type=submit]').textContent = '创建并启动';
+  if (type === 'relay') resetUpstreamRows();
   dlg.showModal();
+}
+
+// openEdit 打开编辑弹窗：按资源配置回填各字段（复用创建表单）。
+function openEdit(r) {
+  editingId = r.id;
+  editingRes = r;
+  createType = r.type;
+  for (const el of $('form').querySelectorAll('input,textarea')) {
+    if (el.type === 'file') continue;
+    el.value = '';
+    el.style.borderColor = '';
+    el.title = '';
+  }
+  $('dlg-title').textContent = `编辑${typeTitles[r.type] ? typeTitles[r.type].replace('新建', '') : r.type} — ${r.name}`;
+  for (const [t, secs] of Object.entries(typeSections)) {
+    for (const sec of secs) {
+      $(sec).hidden = t !== r.type;
+    }
+  }
+  $('f-name').value = r.name || '';
+  $('f-address').value = r.address || '';
+  $('f-address').placeholder = typePlaceholders[r.type] || '';
+
+  const listen = { forward: r.forward, reverse: r.reverse, relay: r.relay, socks5: r.socks5 }[r.type] || {};
+  if (r.type === 'forward' && r.forward) {
+    const f = r.forward;
+    $('ff-user').value = f.user || '';
+    $('ff-password').value = f.password || '';
+    $('ff-upstream').value = f.upstream || '';
+    $('ff-upstream-user').value = f.upstream_user || '';
+    $('ff-upstream-password').value = f.upstream_password || '';
+    $('ff-upstream-ca').value = f.upstream_ca || '';
+    $('ff-upstream-cert').value = f.upstream_cert || '';
+    $('ff-upstream-key').value = f.upstream_key || '';
+  } else if (r.type === 'reverse' && r.reverse) {
+    const v = r.reverse;
+    $('fr-backends').value = (v.backends || []).join(', ');
+    $('fr-backend-ca').value = v.backend_ca || '';
+    $('fr-backend-cert').value = v.backend_cert || '';
+    $('fr-backend-key').value = v.backend_key || '';
+  } else if (r.type === 'relay' && r.relay) {
+    fillUpstreamRows(r.relay.upstreams);
+  } else if (r.type === 'socks5' && r.socks5) {
+    $('fs-user').value = r.socks5.user || '';
+    $('fs-password').value = r.socks5.password || '';
+  }
+  // 监听端 TLS（各类型的 spec 均有 cert/key/client_ca）
+  $('f-cert').value = listen.cert || '';
+  $('f-key').value = listen.key || '';
+  $('f-client-ca').value = listen.client_ca || '';
+  $('form').querySelector('button[type=submit]').textContent = '保存（运行中将以新配置重启）';
+  dlg.showModal();
+}
+
+// fillUpstreamRows 按已有配置重建中继上游编辑行。
+function fillUpstreamRows(ups) {
+  const box = $('fx-upstreams');
+  box.innerHTML = '';
+  for (const u of (ups || [])) {
+    addUpstreamRow();
+    const item = box.lastElementChild;
+    item.querySelector('.up-addr').value = u.address || '';
+    item.querySelector('.up-weight').value = u.weight > 1 ? u.weight : '';
+    if (u.ca || u.cert || u.key) {
+      item.querySelector('.ta-ca').value = u.ca || '';
+      item.querySelector('.ta-cert').value = u.cert || '';
+      item.querySelector('.ta-key').value = u.key || '';
+      item.querySelector('.up-tls').hidden = false;
+      item.querySelector('.up-tls-toggle').classList.add('on');
+    }
+  }
+}
+
+/* ---- relay 上游动态行：每行独立的 TLS 配置 ---- */
+
+// addUpstreamRow 生成一个上游编辑行（地址 + 权重 + 可展开的 TLS 三元组）。
+function addUpstreamRow() {
+  const item = document.createElement('div');
+  item.className = 'upstream-item';
+  item.innerHTML = `
+    <div class="up-row">
+      <input class="up-addr" placeholder="host:port">
+      <input class="up-weight" placeholder="权重 1" inputmode="numeric">
+      <button type="button" class="small up-tls-toggle" title="配置该上游独立的 TLS">TLS</button>
+      <button type="button" class="small danger up-del" title="删除该上游">删除</button>
+    </div>
+    <div class="up-tls" hidden>
+      <div class="pem-row"><span class="pem-tag">证书</span><textarea class="ta-cert" rows="2" placeholder="对该上游 mTLS 出示的客户端证书 —— 粘贴 PEM、选择文件或从证书管理选择"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer"></label><button type="button" class="small pick-btn" data-pick="cert">证书管理</button></span></div>
+      <div class="pem-row"><span class="pem-tag">私钥</span><textarea class="ta-key" rows="2" placeholder="客户端私钥 —— 随证书成对填入，或粘贴/选择文件"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.key"></label></span></div>
+      <div class="pem-row"><span class="pem-tag">CA</span><textarea class="ta-ca" rows="2" placeholder="校验该上游证书的 CA —— 粘贴 PEM、选择文件或从证书管理选择"></textarea><span class="pem-btns"><label class="file-btn">选择文件<input type="file" accept=".pem,.crt,.cer"></label><button type="button" class="small pick-btn" data-pick="ca">证书管理</button></span></div>
+      <div class="hint" style="margin:0">CA 校验该上游证书；证书 + 私钥对该上游做 mTLS；留空表示明文连接</div>
+    </div>`;
+
+  const tlsBox = item.querySelector('.up-tls');
+  const tlsBtn = item.querySelector('.up-tls-toggle');
+  tlsBtn.onclick = () => {
+    tlsBox.hidden = !tlsBox.hidden;
+    tlsBtn.classList.toggle('on', !tlsBox.hidden);
+  };
+  item.querySelector('.up-del').onclick = () => item.remove();
+
+  // 文件选择按钮读入本行的对应 textarea（loadPEM 支持传元素）
+  for (const file of item.querySelectorAll('.file-btn input')) {
+    const ta = file.closest('.pem-row').querySelector('textarea');
+    file.onchange = () => loadPEM(file, ta);
+  }
+  // 从证书管理选择：CA 填本行 ta-ca；证书填本行 ta-cert + ta-key
+  for (const btn of item.querySelectorAll('[data-pick]')) {
+    const kind = btn.dataset.pick;
+    btn.onclick = () => openCertPicker(kind,
+      btn.closest('.pem-row').querySelector('textarea'),
+      kind === 'cert' ? item.querySelector('.ta-key') : null);
+  }
+  $('fx-upstreams').appendChild(item);
+}
+
+// resetUpstreamRows 打开弹窗时重置为一行空白（并清空旧输入）。
+function resetUpstreamRows() {
+  $('fx-upstreams').innerHTML = '';
+  addUpstreamRow();
+}
+
+// collectUpstreams 汇总弹窗里的上游行为提交用数组（跳过空地址行）。
+function collectUpstreams() {
+  const ups = [];
+  for (const item of $('fx-upstreams').querySelectorAll('.upstream-item')) {
+    const address = item.querySelector('.up-addr').value.trim();
+    if (!address) continue;
+    const w = parseInt(item.querySelector('.up-weight').value, 10);
+    const u = { address, weight: w > 0 ? w : 1 };
+    const ca = item.querySelector('.ta-ca').value.trim();
+    const cert = item.querySelector('.ta-cert').value.trim();
+    const key = item.querySelector('.ta-key').value.trim();
+    if (ca || cert || key) { u.ca = ca; u.cert = cert; u.key = key; }
+    ups.push(u);
+  }
+  return ups;
 }
 
 function submitCreate(ev) {
@@ -553,7 +1612,11 @@ function submitCreate(ev) {
       upstream_key: pemValue('ff-upstream-key'),
       cert: pemValue('f-cert'), key: pemValue('f-key'), client_ca: pemValue('f-client-ca'),
     };
-  } else {
+    // 编辑时保留 UI 未展示的动态用户列表（salt/hash 形式），避免整份替换时丢失
+    if (editingRes && editingRes.forward && editingRes.forward.users) {
+      res.forward.users = editingRes.forward.users;
+    }
+  } else if (createType === 'reverse') {
     res.reverse = {
       backends: $('fr-backends').value.split(/[\n,]/).map(s => s.trim()).filter(Boolean),
       backend_ca: pemValue('fr-backend-ca'),
@@ -561,10 +1624,26 @@ function submitCreate(ev) {
       backend_key: pemValue('fr-backend-key'),
       cert: pemValue('f-cert'), key: pemValue('f-key'), client_ca: pemValue('f-client-ca'),
     };
+  } else if (createType === 'relay') {
+    const ups = collectUpstreams();
+    if (!ups.length) { toast('至少配置一个上游'); return false; }
+    res.relay = {
+      upstreams: ups,
+      cert: pemValue('f-cert'), key: pemValue('f-key'), client_ca: pemValue('f-client-ca'),
+    };
+  } else if (createType === 'socks5') {
+    res.socks5 = {
+      user: $('fs-user').value.trim(), password: $('fs-password').value,
+      cert: pemValue('f-cert'), key: pemValue('f-key'), client_ca: pemValue('f-client-ca'),
+    };
   }
+
+  const request = editingId
+    ? api('PUT', `/api/resources/${editingId}`, res)
+    : api('POST', '/api/resources', res);
   busy(ev.target.querySelector('button[type=submit]'),
-    api('POST', '/api/resources', res).then(() => { dlg.close(); refresh(); })
-      .catch(err => toast('创建失败：' + err)));
+    request.then(() => { dlg.close(); refresh(); })
+      .catch(err => toast((editingId ? '编辑失败：' : '创建失败：') + err)));
   return false;
 }
 
@@ -591,6 +1670,24 @@ function summary(r) {
     if (v.cert) parts.push(v.client_ca ? '监听 mTLS' : '监听 TLS');
     return parts.join(' · ');
   }
+  if (r.type === 'relay' && r.relay) {
+    const v = r.relay;
+    const parts = [];
+    if (v.upstreams) {
+      const total = v.upstreams.reduce((s, u) => s + (u.weight || 1), 0);
+      const tls = v.upstreams.filter(u => u.ca || u.cert).length;
+      parts.push(`上游 ×${v.upstreams.length}（权重和 ${total}${tls ? `，${tls} 个带 TLS` : ''}${v.upstreams[0] ? `，${v.upstreams[0].address}${v.upstreams.length > 1 ? ' …' : ''}` : ''}）`);
+    }
+    if (v.cert) parts.push(v.client_ca ? '监听 mTLS' : '监听 TLS');
+    return parts.join(' · ');
+  }
+  if (r.type === 'socks5' && r.socks5) {
+    const s = r.socks5;
+    const parts = [];
+    parts.push(s.user ? '用户名/密码认证' : '开放代理（无认证）');
+    if (s.cert) parts.push(s.client_ca ? '监听 mTLS' : '监听 TLS');
+    return parts.join(' · ');
+  }
   return '';
 }
 
@@ -605,6 +1702,7 @@ function buildRow() {
     <td class="mono c-traffic"></td>
     <td class="mono cell-ellipsis c-cfg"></td>
     <td><div class="actions">
+      <button class="small" data-act="edit">编辑</button>
       <button class="small" data-act="users" hidden>用户</button>
       <button class="small" data-act="metrics">监控</button>
       <button class="small" data-act="toggle"></button>
@@ -628,6 +1726,7 @@ function buildRow() {
       .then(refresh).catch(e => toast(e));
   };
   tr._els.users.onclick = () => openUsers(tr._data);
+  tr.querySelector('[data-act=edit]').onclick = () => openEdit(tr._data);
   tr.querySelector('[data-act=metrics]').onclick = () => openMetrics(tr._data);
   tr.querySelector('[data-act=del]').onclick = () => {
     const d = tr._data;
@@ -641,7 +1740,7 @@ function updateRow(tr, r) {
   tr._data = r;
   const e = tr._els;
   e.name.textContent = r.name;
-  e.type.textContent = r.type === 'forward' ? '正向' : '反向';
+  e.type.textContent = { forward: '正向', reverse: '反向', relay: '中继', socks5: 'SOCKS5' }[r.type] || r.type;
   e.addr.textContent = r.address;
   e.badge.className = 'badge ' + r.status;
   e.badge.textContent = statusText(r.status);
@@ -661,10 +1760,31 @@ function updateRow(tr, r) {
   e.toggle.textContent = r.status === 'running' ? '停止' : '启动';
 }
 
+// render 按当前视图过滤展示；侧栏计数与工具栏提示用全量数据。
+// 证书工具页不展示表格，只更新侧栏计数。
 function render(list) {
+  lastList = Array.isArray(list) ? list : [];
+
+  // 侧栏各类型计数
+  const counts = { all: lastList.length };
+  for (const r of lastList) counts[r.type] = (counts[r.type] || 0) + 1;
+  for (const [t, n] of Object.entries(counts)) {
+    const el = $('cnt-' + t);
+    if (el) el.textContent = n ? n : '';
+  }
+  const running = lastList.filter(r => r.status === 'running').length;
+  $('count-hint').textContent = lastList.length
+    ? `${lastList.length} 个资源 · ${running} 个运行中` : '';
+
+  if (currentView === 'certs') return;
+
+  // 当前视图过滤
+  const show = views[currentView].types;
+  const filtered = lastList.filter(r => show.includes(r.type));
+
   const tbody = $('rows');
   const seen = new Set();
-  for (const r of list) {
+  for (const r of filtered) {
     seen.add(r.id);
     let tr = rowMap.get(r.id);
     if (!tr) {
@@ -681,9 +1801,12 @@ function render(list) {
       rowMap.delete(id);
     }
   }
-  $('empty').hidden = list.length > 0;
-  const running = list.filter(r => r.status === 'running').length;
-  $('count-hint').textContent = list.length ? `${list.length} 个资源 · ${running} 个运行中` : '';
+  $('empty').hidden = filtered.length > 0;
+  if (!filtered.length) {
+    $('empty').textContent = currentView === 'all'
+      ? '暂无资源，点击右上角按钮创建'
+      : `暂无${views[currentView].title}资源，点击右上角按钮创建`;
+  }
 }
 
 function refresh(silent) {
@@ -798,6 +1921,7 @@ function loadMetrics(silent) {
 setInterval(() => {
   if ($('app-view').style.display !== 'none') refresh(true); // 轮询静默：不闪加载条
 }, 3000);
+
+// 初始视图：总览
+switchView('all');
 </script>
-</body>
-</html>

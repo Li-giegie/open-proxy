@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Li-giegie/open-proxy/internal/testutil"
+	"github.com/Li-giegie/open-proxy/internal/netutil"
 )
 
 // newTLSServer 用 handler 启动一个自管 TLS 配置的 https 服务，返回其地址。
@@ -87,9 +87,9 @@ func TestChainUpstreamTLS(t *testing.T) {
 // TestChainUpstreamMTLS 验证与 https 上游的 mTLS：上游要求客户端证书，
 // 本地代理经 UpstreamTLS.Certificates 出示证书后握手成功；不出示则失败。
 func TestChainUpstreamMTLS(t *testing.T) {
-	caPEM, ca, caKey := testutil.GenCA(t)
-	srvCertPEM, srvKeyPEM := testutil.GenLeaf(t, ca, caKey, "upstream-proxy", true)
-	cliCertPEM, cliKeyPEM := testutil.GenLeaf(t, ca, caKey, "local-proxy", false)
+	caPEM, ca, caKey := netutil.GenCA(t)
+	srvCertPEM, srvKeyPEM := netutil.GenLeaf(t, ca, caKey, "upstream-proxy", true)
+	cliCertPEM, cliKeyPEM := netutil.GenLeaf(t, ca, caKey, "local-proxy", false)
 
 	srvCert, err := tls.X509KeyPair(srvCertPEM, srvKeyPEM)
 	if err != nil {
@@ -171,8 +171,8 @@ func TestChainUpstreamMTLS(t *testing.T) {
 func TestChainConnectTLSUpstream(t *testing.T) {
 	echoAddr := startEcho(t)
 
-	caPEM, ca, caKey := testutil.GenCA(t)
-	srvCertPEM, srvKeyPEM := testutil.GenLeaf(t, ca, caKey, "upstream-proxy", true)
+	caPEM, ca, caKey := netutil.GenCA(t)
+	srvCertPEM, srvKeyPEM := netutil.GenLeaf(t, ca, caKey, "upstream-proxy", true)
 	srvCert, err := tls.X509KeyPair(srvCertPEM, srvKeyPEM)
 	if err != nil {
 		t.Fatal(err)
@@ -227,5 +227,72 @@ func TestChainConnectTLSUpstream(t *testing.T) {
 	}
 	if string(buf) != "hello" {
 		t.Errorf("echo = %q, want %q", buf, "hello")
+	}
+}
+
+// TestHTTP1OnlyALPN 验证声明仅 HTTP/1.1 后 TLS ALPN 只协商 http/1.1：
+// 客户端即使提供 h2 也拿不到 h2（CONNECT 依赖 Hijack，h2 上无法工作）。
+func TestHTTP1OnlyALPN(t *testing.T) {
+	echoAddr := startEcho(t)
+
+	caPEM, ca, caKey := netutil.GenCA(t)
+	srvCertPEM, srvKeyPEM := netutil.GenLeaf(t, ca, caKey, "forward-proxy", true)
+	srvCert, err := tls.X509KeyPair(srvCertPEM, srvKeyPEM)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	proxy, err := New(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &http.Server{
+		Handler:   proxy,
+		TLSConfig: &tls.Config{Certificates: []tls.Certificate{srvCert}, MinVersion: tls.VersionTLS12},
+	}
+	srv.Protocols = HTTP1OnlyProtocols()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() { _ = srv.ServeTLS(ln, "", "") }()
+	t.Cleanup(func() { srv.Close() })
+
+	pool := x509.NewCertPool()
+	pool.AppendCertsFromPEM(caPEM)
+	// 客户端同时提供 h2 与 http/1.1，ALPN 只应落到 http/1.1
+	conn, err := tls.Dial("tcp", ln.Addr().String(), &tls.Config{
+		RootCAs:    pool,
+		NextProtos: []string{"h2", "http/1.1"},
+		MinVersion: tls.VersionTLS12,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if got := conn.ConnectionState().NegotiatedProtocol; got != "http/1.1" {
+		t.Fatalf("ALPN 协商出 %q, want http/1.1", got)
+	}
+
+	// 协商出的连接上 CONNECT 正常工作
+	fmt.Fprintf(conn, "CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", echoAddr.String(), echoAddr.String())
+	br := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(br, &http.Request{Method: http.MethodConnect})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("CONNECT status = %d, want 200", resp.StatusCode)
+	}
+	if _, err := conn.Write([]byte("alpn-ok")); err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, len("alpn-ok"))
+	if _, err := io.ReadFull(br, buf); err != nil {
+		t.Fatal(err)
+	}
+	if string(buf) != "alpn-ok" {
+		t.Errorf("echo = %q, want %q", buf, "alpn-ok")
 	}
 }

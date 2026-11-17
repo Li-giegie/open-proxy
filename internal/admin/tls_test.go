@@ -9,14 +9,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Li-giegie/open-proxy/internal/testutil"
+	"github.com/Li-giegie/open-proxy/internal/netutil"
 )
 
 // TestContentTLS 验证 TLS 字段以 PEM 内容（而非路径）配置：
 // 监听端 TLS 直接生效，非法内容在创建期报 400。
 func TestContentTLS(t *testing.T) {
-	caPEM, ca, caKey := testutil.GenCA(t)
-	srvCertPEM, srvKeyPEM := testutil.GenLeaf(t, ca, caKey, "resource-server", true)
+	caPEM, ca, caKey := netutil.GenCA(t)
+	srvCertPEM, srvKeyPEM := netutil.GenLeaf(t, ca, caKey, "resource-server", true)
 
 	// 经代理访问的本地目标（确定性结果）
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

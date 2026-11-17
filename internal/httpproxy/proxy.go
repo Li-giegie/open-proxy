@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Li-giegie/open-proxy/internal/netutil"
 )
 
 // Options 是创建 Proxy 的配置，零值字段使用各自的默认值。
@@ -316,37 +318,15 @@ func (p *Proxy) handleConnect(rw http.ResponseWriter, req *http.Request) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		p.copyStream(dst, src, p.metrics.BytesIn) // 客户端 → 上游
-		closeWrite(dst)
+		netutil.CopyStream(dst, src, p.idleTimeout, p.metrics.BytesIn) // 客户端 → 上游
+		netutil.CloseWrite(dst)
 	}()
 	go func() {
 		defer wg.Done()
-		p.copyStream(src, dst, p.metrics.BytesOut) // 上游 → 客户端
-		closeWrite(src)
+		netutil.CopyStream(src, dst, p.idleTimeout, p.metrics.BytesOut) // 上游 → 客户端
+		netutil.CloseWrite(src)
 	}()
 	wg.Wait()
-}
-
-// copyStream 从 src 单向拷贝到 dst，每块数据写出后调用 count 上报。
-// 每次读写都把超时刷新到 idleTimeout 之后，长时间无数据流动即超时
-// 断开，避免连接被慢速客户端永久占用。
-func (p *Proxy) copyStream(dst, src net.Conn, count func(int64)) {
-	buf := make([]byte, 32*1024)
-	for {
-		src.SetReadDeadline(time.Now().Add(p.idleTimeout))
-		n, err := src.Read(buf)
-		if n > 0 {
-			dst.SetWriteDeadline(time.Now().Add(p.idleTimeout))
-			if _, err = dst.Write(buf[:n]); err != nil {
-				return
-			}
-			count(int64(n))
-		}
-		if err != nil {
-			// io.EOF 为对端正常结束，其余为连接错误或空闲超时
-			return
-		}
-	}
 }
 
 // newUpstreamDialer 返回经上游正向代理建立隧道的拨号函数（代理链）：
@@ -465,14 +445,4 @@ func removeHopByHopHeaders(h http.Header) {
 	for _, name := range hopByHopHeaders {
 		h.Del(name)
 	}
-}
-
-// closeWrite 半关闭连接的写侧（向对端发送 FIN）。非 TCP 连接不支持
-// 半关闭时退化为整条关闭。
-func closeWrite(c net.Conn) {
-	if tcp, ok := c.(*net.TCPConn); ok {
-		_ = tcp.CloseWrite()
-		return
-	}
-	_ = c.Close()
 }

@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Li-giegie/open-proxy/internal/certgen"
 )
 
 //go:embed web/index.html
@@ -152,6 +154,198 @@ func Handler(m *Manager, user, password string) http.Handler {
 	mux.HandleFunc("GET /api/resources", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, m.List())
 	})
+
+	// certGenReq 是证书生成/签发的叶子参数（字段与 flag 对应）。
+	type certGenReq struct {
+		CommonName   string   `json:"common_name"`
+		Organization []string `json:"organization"`
+		DNSNames     []string `json:"dns_names"`
+		IPs          []string `json:"ips"`
+		Days         int      `json:"days"`
+		Usage        string   `json:"usage"`
+	}
+	certOpts := func(req certGenReq) (certgen.CertOptions, error) {
+		usage, err := certgen.ParseUsage(req.Usage)
+		if err != nil {
+			return certgen.CertOptions{}, err
+		}
+		return certgen.CertOptions{
+			CommonName:   req.CommonName,
+			Organization: req.Organization,
+			DNSNames:     req.DNSNames,
+			IPs:          req.IPs,
+			Days:         req.Days,
+			Usage:        usage,
+		}, nil
+	}
+
+	// 创建根 CA（只建 CA，不自动签发叶子证书；叶子由 /api/certs/issue 派生）。
+	mux.HandleFunc("POST /api/cas", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			CommonName   string   `json:"common_name"`
+			Organization []string `json:"organization"`
+			Days         int      `json:"days"`
+			Algorithm    string   `json:"algorithm"`
+			Curve        string   `json:"curve"`
+			RSABits      int      `json:"rsa_bits"`
+		}
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		rec, err := m.CreateCA(req.CommonName, req.Organization, req.Days, req.Algorithm, req.Curve, req.RSABits)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, rec)
+	})
+
+	// 已保存的证书记录（创建/签发自动持久化，管理中心重启后仍在）
+	mux.HandleFunc("GET /api/cas", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, m.ListCAs())
+	})
+	mux.HandleFunc("DELETE /api/cas/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if err := m.DeleteCA(r.PathValue("id")); err != nil {
+			writeError(w, resourceErrStatus(r.PathValue("id"), err), err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("GET /api/certs", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, m.ListCerts())
+	})
+	mux.HandleFunc("DELETE /api/certs/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if err := m.DeleteCert(r.PathValue("id")); err != nil {
+			writeError(w, resourceErrStatus(r.PathValue("id"), err), err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	// 导入已有 CA（证书 + 私钥 PEM）：验证后入库，可直接从它签发。
+	mux.HandleFunc("POST /api/cas/import", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Cert string `json:"cert"`
+			Key  string `json:"key"`
+		}
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		rec, err := m.ImportCA(req.Cert, req.Key)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, rec)
+	})
+
+	// 导入一张已签发的证书（证书 + 私钥 PEM）：用途按 EKU 推断；
+	// ca_id 可选，给出时关联已存储的 CA。
+	mux.HandleFunc("POST /api/certs/import", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Cert string `json:"cert"`
+			Key  string `json:"key"`
+			CAID string `json:"ca_id"`
+		}
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		rec, err := m.ImportCert(req.Cert, req.Key, req.CAID)
+		if err != nil {
+			writeError(w, resourceErrStatus(req.CAID, err), err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, rec)
+	})
+
+	// 导出已保存证书记录为浏览器 PFX（PKCS#12，仅证书+私钥）。
+	mux.HandleFunc("POST /api/certs/{id}/pfx", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Password string `json:"password"`
+		}
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		pfx, err := m.ExportCertPFX(r.PathValue("id"), req.Password)
+		if err != nil {
+			writeError(w, resourceErrStatus(r.PathValue("id"), err), err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{
+			"pfx": base64.StdEncoding.EncodeToString(pfx),
+		})
+	})
+
+	// 由已有 CA 签发叶子证书：usage 为 client（mTLS 出示，CN 即身份，
+	// 缺省）/ server / both，服务端/双向形态的 SAN 覆盖 common_name
+	// 与 dns_names/ips 外加 localhost、127.0.0.1、::1。
+	// CA 来源二选一：ca_id（已保存的 CA，UI 下拉用）或 ca+ca_key（粘贴 PEM）。
+	// pfx_password 非空时同时导出 PKCS#12（base64，仅叶子证书+私钥，与 openssl
+	// pkcs12 -export 默认语义一致——不带 CA，避免导入浏览器时把 CA 装进
+	// 客户端信任库）。
+	mux.HandleFunc("POST /api/certs/issue", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			certGenReq
+			CAID        string `json:"ca_id"`
+			CA          string `json:"ca"`
+			CAKey       string `json:"ca_key"`
+			PFXPassword string `json:"pfx_password"`
+		}
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		opts, err := certOpts(req.certGenReq)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		var certPEM, keyPEM []byte
+		switch {
+		case req.CAID != "":
+			// 从已保存的 CA 签发（持久化已在 Manager 内完成）
+			certPEM, keyPEM, err = m.IssueFromCA(req.CAID, opts)
+			if err != nil {
+				writeError(w, resourceErrStatus(req.CAID, err), err)
+				return
+			}
+		case req.CA != "" && req.CAKey != "":
+			// 粘贴 PEM 签发（外部 CA）
+			ca, err := certgen.LoadCA([]byte(req.CA), []byte(req.CAKey))
+			if err != nil {
+				writeError(w, http.StatusBadRequest, err)
+				return
+			}
+			certPEM, keyPEM, err = ca.Issue(opts)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, err)
+				return
+			}
+			m.recordCert(req.CA, certPEM, keyPEM, opts)
+		default:
+			writeError(w, http.StatusBadRequest, errors.New("需要 ca_id（已保存的 CA）或 ca 与 ca_key（PEM 内容）"))
+			return
+		}
+
+		resp := map[string]string{
+			"cert": string(certPEM),
+			"key":  string(keyPEM),
+		}
+		if req.PFXPassword != "" {
+			pfx, err := certgen.MarshalPKCS12(certPEM, keyPEM, nil, req.PFXPassword)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, err)
+				return
+			}
+			resp["pfx"] = base64.StdEncoding.EncodeToString(pfx)
+		}
+		writeJSON(w, http.StatusCreated, resp)
+	})
 	mux.HandleFunc("POST /api/resources", func(w http.ResponseWriter, r *http.Request) {
 		var res Resource
 		if err := readJSON(r, &res); err != nil {
@@ -167,6 +361,21 @@ func Handler(m *Manager, user, password string) http.Handler {
 		}
 		writeJSON(w, http.StatusCreated, view)
 	})
+	// 编辑资源配置：body 为完整资源 JSON（与创建相同，ID 以路径为准）
+	mux.HandleFunc("PUT /api/resources/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var res Resource
+		if err := readJSON(r, &res); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		view, err := m.Update(r.PathValue("id"), &res)
+		if err != nil {
+			writeError(w, resourceErrStatus(r.PathValue("id"), err), err)
+			return
+		}
+		writeJSON(w, http.StatusOK, view)
+	})
+
 	mux.HandleFunc("POST /api/resources/{id}/start", func(w http.ResponseWriter, r *http.Request) {
 		view, err := m.Start(r.PathValue("id"))
 		if err != nil {

@@ -1,7 +1,4 @@
-// Package testutil 提供跨包共享的测试辅助函数。目前只有测试 PKI
-// （自签 CA + 叶子证书）的生成，供 httpproxy、reverseproxy、admin、
-// proxycfg 各包的 TLS/mTLS 测试共用，替代各包私有的一份份同构实现。
-package testutil
+package netutil
 
 import (
 	"crypto/ecdsa"

@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 )
 
 // 资源类型常量。
 const (
 	TypeForward = "forward"
 	TypeReverse = "reverse"
+	TypeRelay   = "relay"
+	TypeSocks5  = "socks5"
 )
 
 // Resource 是一个受管理的代理资源：类型 + 监听地址 + 完整配置。
@@ -18,10 +21,12 @@ const (
 type Resource struct {
 	ID      string       `json:"id"`
 	Name    string       `json:"name"`
-	Type    string       `json:"type"` // forward | reverse
+	Type    string       `json:"type"` // forward | reverse | relay | socks5
 	Address string       `json:"address"`
 	Forward *ForwardSpec `json:"forward,omitempty"`
 	Reverse *ReverseSpec `json:"reverse,omitempty"`
+	Relay   *RelaySpec   `json:"relay,omitempty"`
+	Socks5  *Socks5Spec  `json:"socks5,omitempty"`
 }
 
 // ForwardSpec 是正向代理资源的配置。认证字段语义与 forward 命令的
@@ -70,6 +75,40 @@ type ReverseSpec struct {
 	ClientCA string `json:"client_ca"`
 }
 
+// RelaySpec 是 TCP 中继资源的配置。TLS 字段为 **PEM 文本内容**，
+// 每个上游可独立配置上游端 TLS；weight 缺省（0 或省略）为 1。
+type RelaySpec struct {
+	Upstreams []RelayUpstream `json:"upstreams"`
+	// DialTimeout/IdleTimeout 为时长字符串（如 "10s"、"2m"），空用默认值。
+	DialTimeout string `json:"dial_timeout,omitempty"`
+	IdleTimeout string `json:"idle_timeout,omitempty"`
+	// 监听端 TLS（PEM 内容）
+	Cert     string `json:"cert"`
+	Key      string `json:"key"`
+	ClientCA string `json:"client_ca"`
+}
+
+// RelayUpstream 是中继的一个上游。
+type RelayUpstream struct {
+	Address string `json:"address"`
+	Weight  int    `json:"weight,omitempty"` // 缺省 1
+	// 上游端 TLS（PEM 内容）：CA 校验上游证书，Cert/Key 对上游 mTLS
+	CA   string `json:"ca,omitempty"`
+	Cert string `json:"cert,omitempty"`
+	Key  string `json:"key,omitempty"`
+}
+
+// Socks5Spec 是 SOCKS5 代理资源的配置。认证为 RFC 1929 单用户
+// （user/password 成对设置，全空为开放代理）；TLS 字段为 **PEM 文本内容**。
+type Socks5Spec struct {
+	User     string `json:"user"`
+	Password string `json:"password"`
+	// 监听端 TLS（PEM 内容）
+	Cert     string `json:"cert"`
+	Key      string `json:"key"`
+	ClientCA string `json:"client_ca"`
+}
+
 // validate 校验资源自身完整性（不含证书文件是否存在等构造期检查）。
 func (r *Resource) validate() error {
 	if r.Name == "" {
@@ -96,8 +135,51 @@ func (r *Resource) validate() error {
 		if len(r.Reverse.Backends) == 0 {
 			return errors.New("backends 不能为空")
 		}
+	case TypeRelay:
+		if r.Relay == nil {
+			return errors.New("relay 资源缺少 relay 配置")
+		}
+		if len(r.Relay.Upstreams) == 0 {
+			return errors.New("upstreams 不能为空")
+		}
+		for i, u := range r.Relay.Upstreams {
+			if u.Address == "" {
+				return fmt.Errorf("upstreams[%d].address 不能为空", i)
+			}
+			if u.Weight < 0 {
+				return fmt.Errorf("upstreams[%d].weight 必须 >= 0", i)
+			}
+			if (u.Cert == "") != (u.Key == "") {
+				return fmt.Errorf("upstreams[%d] 的 cert 与 key 必须同时设置", i)
+			}
+		}
+		if err := validateDuration(r.Relay.DialTimeout, "dial_timeout"); err != nil {
+			return err
+		}
+		if err := validateDuration(r.Relay.IdleTimeout, "idle_timeout"); err != nil {
+			return err
+		}
+	case TypeSocks5:
+		if r.Socks5 == nil {
+			return errors.New("socks5 资源缺少 socks5 配置")
+		}
+		if (r.Socks5.User == "") != (r.Socks5.Password == "") {
+			return errors.New("user 与 password 必须同时设置")
+		}
 	default:
-		return fmt.Errorf("未知资源类型 %q（forward 或 reverse）", r.Type)
+		return fmt.Errorf("未知资源类型 %q（forward / reverse / relay / socks5）", r.Type)
+	}
+	return nil
+}
+
+// validateDuration 校验时长字符串（空为默认值，非空须为正时长）。
+func validateDuration(s, field string) error {
+	if s == "" {
+		return nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil || d <= 0 {
+		return fmt.Errorf("%s %q 不是合法的正时长", field, s)
 	}
 	return nil
 }

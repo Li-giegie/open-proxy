@@ -13,17 +13,20 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Li-giegie/open-proxy/internal/admin"
-	"github.com/Li-giegie/open-proxy/internal/proxycfg"
+	"github.com/Li-giegie/open-proxy/internal/netutil"
 )
 
 // adminCmd 启动代理管理中心：Web UI + REST API，统一创建/启停
 // forward、reverse 代理资源。资源以进程内实例运行，配置持久化到
 // JSON 文件，重启后自动恢复。监听端支持明文 / TLS / mTLS（复用
-// proxycfg.ServerTLS），与 forward、reverse 命令一致。
+// netutil.ServerTLS），与 forward、reverse 命令一致。
 var adminCmd = &cobra.Command{
 	Use:   "admin",
 	Short: "代理管理中心（Web UI + REST API）",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := loadFlagsFromConfig(cmd); err != nil {
+			return err
+		}
 		address, _ := cmd.Flags().GetString("address")
 		dataFile, _ := cmd.Flags().GetString("data")
 		user, _ := cmd.Flags().GetString("user")
@@ -38,7 +41,7 @@ var adminCmd = &cobra.Command{
 
 		// 管理中心自身的监听端 TLS/mTLS；Basic 认证凭证经 TLS 传输
 		// 才不会明文暴露，暴露在不可信网络时建议启用
-		tlsConf, err := proxycfg.ServerTLS(certFile, keyFile, clientCAFile)
+		tlsConf, err := netutil.ServerTLS(certFile, keyFile, clientCAFile)
 		if err != nil {
 			return err
 		}
@@ -72,6 +75,7 @@ var adminCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(adminCmd)
+	adminCmd.Flags().StringP("config", "c", "", "JSON 配置文件（键名与 flag 一致，与命令行参数二选一，示例见 configs/admin.example.json）")
 	adminCmd.Flags().StringP("address", "a", "127.0.0.1:8090", "管理中心监听地址")
 	adminCmd.Flags().String("data", "proxies.json", "资源持久化文件（JSON，重启后按此恢复资源）")
 	adminCmd.Flags().String("user", "", "管理中心 Basic 认证用户名（与 --password 同时设置）")

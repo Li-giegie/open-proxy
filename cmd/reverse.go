@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Li-giegie/open-proxy/internal/proxycfg"
+	"github.com/Li-giegie/open-proxy/internal/netutil"
 	"github.com/Li-giegie/open-proxy/internal/reverseproxy"
 )
 
@@ -34,11 +34,14 @@ func readPEMFiles(paths ...string) ([][]byte, error) {
 }
 
 // reverseCmd 启动 HTTP 反向代理，监听端支持明文 / TLS / mTLS
-// （复用 proxycfg.ServerTLS），与 forward 家族平行扩展。
+// （复用 netutil.ServerTLS），与 forward 家族平行扩展。
 var reverseCmd = &cobra.Command{
 	Use:   "reverse",
 	Short: "HTTP 反向代理",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := loadFlagsFromConfig(cmd); err != nil {
+			return err
+		}
 		address, _ := cmd.Flags().GetString("address")
 		backends, _ := cmd.Flags().GetStringSlice("backend")
 		certFile, _ := cmd.Flags().GetString("cert")
@@ -66,7 +69,7 @@ var reverseCmd = &cobra.Command{
 			return err
 		}
 
-		tlsConf, err := proxycfg.ServerTLS(certFile, keyFile, clientCAFile)
+		tlsConf, err := netutil.ServerTLS(certFile, keyFile, clientCAFile)
 		if err != nil {
 			return err
 		}
@@ -95,6 +98,7 @@ var reverseCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(reverseCmd)
+	reverseCmd.Flags().StringP("config", "c", "", "JSON 配置文件（键名与 flag 一致，与命令行参数二选一，示例见 configs/reverse.example.json）")
 	reverseCmd.Flags().StringP("address", "a", ":8080", "监听地址")
 	reverseCmd.Flags().StringSlice("backend", nil, "上游地址，可重复指定实现负载均衡（如 http://127.0.0.1:8080）")
 	reverseCmd.Flags().String("cert", "", "服务端 TLS 证书 PEM 文件（与 --key 同时设置启用 TLS 监听）")
