@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Li-giegie/open-proxy/internal/certgen"
@@ -575,6 +576,99 @@ func TestImportCertPKCS1Key(t *testing.T) {
 	resp2.Body.Close()
 	if resp2.StatusCode != http.StatusBadRequest {
 		t.Errorf("不配对导入: status = %d, want 400", resp2.StatusCode)
+	}
+}
+
+// TestCertRemark 验证记录备注（区分同域名/同名的多张证书）：
+// 导入时填写、PATCH 编辑与清除、持久化到重启后、
+// 不存在记录 404、超长备注 400。
+func TestCertRemark(t *testing.T) {
+	dir := t.TempDir()
+	dataFile := filepath.Join(dir, "proxies.json")
+	_, api := newTestManagerAt(t, dataFile)
+
+	ca, err := certgen.NewCA(certgen.CAOptions{CommonName: "remark-ca", Days: 30})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cliPEM, cliKeyPEM, err := ca.Issue(certgen.CertOptions{CommonName: "same.example.com", Days: 30})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 导入时带备注
+	body, _ := json.Marshal(map[string]string{
+		"cert": string(cliPEM), "key": string(cliKeyPEM), "remark": "网关入口用",
+	})
+	resp, err := api.Client().Post(api.URL+"/api/certs/import", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rec struct {
+		ID     string `json:"id"`
+		Remark string `json:"remark"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&rec); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || rec.Remark != "网关入口用" {
+		t.Fatalf("导入: status = %d, remark = %q, want 201/网关入口用", resp.StatusCode, rec.Remark)
+	}
+
+	patchRemark := func(id, remark string) *http.Response {
+		t.Helper()
+		raw, _ := json.Marshal(map[string]string{"remark": remark})
+		req, _ := http.NewRequest(http.MethodPatch, api.URL+"/api/certs/"+id, bytes.NewReader(raw))
+		resp, err := api.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp
+	}
+
+	// PATCH 修改备注
+	resp2 := patchRemark(rec.ID, "测试环境用")
+	var rec2 struct {
+		Remark string `json:"remark"`
+	}
+	json.NewDecoder(resp2.Body).Decode(&rec2)
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK || rec2.Remark != "测试环境用" {
+		t.Fatalf("编辑: status = %d, remark = %q, want 200/测试环境用", resp2.StatusCode, rec2.Remark)
+	}
+
+	// 重启后备注仍在
+	m2, err := NewManager(NewStore(dataFile), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m2.mu.Lock()
+	got := m2.certs.certs[rec.ID]
+	m2.mu.Unlock()
+	if got == nil || got.Remark != "测试环境用" {
+		t.Fatalf("重启后备注 = %+v", got)
+	}
+
+	// 留空提交即清除
+	resp3 := patchRemark(rec.ID, "")
+	resp3.Body.Close()
+	if resp3.StatusCode != http.StatusOK {
+		t.Fatalf("清除备注: status = %d, want 200", resp3.StatusCode)
+	}
+
+	// 不存在的记录：404
+	resp4 := patchRemark("no-such", "x")
+	resp4.Body.Close()
+	if resp4.StatusCode != http.StatusNotFound {
+		t.Errorf("不存在记录: status = %d, want 404", resp4.StatusCode)
+	}
+
+	// 超长备注：400
+	resp5 := patchRemark(rec.ID, strings.Repeat("长", 300))
+	resp5.Body.Close()
+	if resp5.StatusCode != http.StatusBadRequest {
+		t.Errorf("超长备注: status = %d, want 400", resp5.StatusCode)
 	}
 }
 

@@ -224,16 +224,18 @@ func Handler(m *Manager, user, password string) http.Handler {
 	})
 
 	// 导入已有 CA（证书 + 私钥 PEM）：验证后入库，可直接从它签发。
+	// remark 可选：用户备注，用于区分同名的多条记录。
 	mux.HandleFunc("POST /api/cas/import", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Cert string `json:"cert"`
-			Key  string `json:"key"`
+			Cert   string `json:"cert"`
+			Key    string `json:"key"`
+			Remark string `json:"remark"`
 		}
 		if err := readJSON(r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
-		rec, err := m.ImportCA(req.Cert, req.Key)
+		rec, err := m.ImportCA(req.Cert, req.Key, req.Remark)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err)
 			return
@@ -242,23 +244,57 @@ func Handler(m *Manager, user, password string) http.Handler {
 	})
 
 	// 导入一张已签发的证书（证书 + 私钥 PEM）：用途按 EKU 推断；
-	// ca_id 可选，给出时关联已存储的 CA。
+	// ca_id 可选，给出时关联已存储的 CA；remark 可选：用户备注，
+	// 用于区分同域名/同 CN 的多张证书。
 	mux.HandleFunc("POST /api/certs/import", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Cert string `json:"cert"`
-			Key  string `json:"key"`
-			CAID string `json:"ca_id"`
+			Cert   string `json:"cert"`
+			Key    string `json:"key"`
+			CAID   string `json:"ca_id"`
+			Remark string `json:"remark"`
 		}
 		if err := readJSON(r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
-		rec, err := m.ImportCert(req.Cert, req.Key, req.CAID)
+		rec, err := m.ImportCert(req.Cert, req.Key, req.CAID, req.Remark)
 		if err != nil {
 			writeError(w, resourceErrStatus(req.CAID, err), err)
 			return
 		}
 		writeJSON(w, http.StatusCreated, rec)
+	})
+
+	// 编辑记录备注（CA 与证书各自端点）：备注只存管理记录，不写入证书。
+	mux.HandleFunc("PATCH /api/cas/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Remark string `json:"remark"`
+		}
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		rec, err := m.SetCARemark(r.PathValue("id"), req.Remark)
+		if err != nil {
+			writeError(w, resourceErrStatus(r.PathValue("id"), err), err)
+			return
+		}
+		writeJSON(w, http.StatusOK, rec)
+	})
+	mux.HandleFunc("PATCH /api/certs/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Remark string `json:"remark"`
+		}
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		rec, err := m.SetCertRemark(r.PathValue("id"), req.Remark)
+		if err != nil {
+			writeError(w, resourceErrStatus(r.PathValue("id"), err), err)
+			return
+		}
+		writeJSON(w, http.StatusOK, rec)
 	})
 
 	// 导出已保存证书记录为浏览器 PFX（PKCS#12，仅证书+私钥）。

@@ -925,9 +925,13 @@ func (m *Manager) LookupCA(caPEM string) (*CARecord, bool) {
 }
 
 // ImportCA 导入已有 CA（证书 + 私钥 PEM）并持久化，之后可直接从它签发。
-func (m *Manager) ImportCA(certPEM, keyPEM string) (*CARecord, error) {
+// remark 为用户备注（可为空）。
+func (m *Manager) ImportCA(certPEM, keyPEM, remark string) (*CARecord, error) {
 	if certPEM == "" || keyPEM == "" {
 		return nil, fmt.Errorf("证书与私钥 PEM 不能为空")
+	}
+	if err := checkRemark(remark); err != nil {
+		return nil, err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -935,14 +939,17 @@ func (m *Manager) ImportCA(certPEM, keyPEM string) (*CARecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.certs.importCA(id, certPEM, keyPEM)
+	return m.certs.importCA(id, certPEM, keyPEM, remark)
 }
 
 // ImportCert 导入一张已签发的证书（证书 + 私钥 PEM）并持久化。
-// caID 可选，给出时关联已存储的 CA 记录。
-func (m *Manager) ImportCert(certPEM, keyPEM, caID string) (*CertRecord, error) {
+// caID 可选，给出时关联已存储的 CA 记录；remark 为用户备注（可为空）。
+func (m *Manager) ImportCert(certPEM, keyPEM, caID, remark string) (*CertRecord, error) {
 	if certPEM == "" || keyPEM == "" {
 		return nil, fmt.Errorf("证书与私钥 PEM 不能为空")
+	}
+	if err := checkRemark(remark); err != nil {
+		return nil, err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -950,7 +957,38 @@ func (m *Manager) ImportCert(certPEM, keyPEM, caID string) (*CertRecord, error) 
 	if err != nil {
 		return nil, err
 	}
-	return m.certs.importCert(id, certPEM, keyPEM, caID)
+	return m.certs.importCert(id, certPEM, keyPEM, caID, remark)
+}
+
+// maxRemarkLen 备注长度上限（防止把大段文本塞进记录）。
+const maxRemarkLen = 256
+
+// checkRemark 校验备注长度。
+func checkRemark(remark string) error {
+	if len(remark) > maxRemarkLen {
+		return fmt.Errorf("备注最长 %d 字符", maxRemarkLen)
+	}
+	return nil
+}
+
+// SetCARemark / SetCertRemark 更新已保存记录的备注
+// （区分同域名/同 CN 的多张证书），并持久化。
+func (m *Manager) SetCARemark(id, remark string) (*CARecord, error) {
+	if err := checkRemark(remark); err != nil {
+		return nil, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.certs.setCARemark(id, remark)
+}
+
+func (m *Manager) SetCertRemark(id, remark string) (*CertRecord, error) {
+	if err := checkRemark(remark); err != nil {
+		return nil, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.certs.setCertRemark(id, remark)
 }
 
 // ExportCertPFX 把已保存的证书记录导出为 PKCS#12（浏览器导入用），

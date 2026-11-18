@@ -25,6 +25,7 @@ type CARecord struct {
 	NotAfter   time.Time `json:"not_after"`
 	CertPEM    string    `json:"cert"`
 	KeyPEM     string    `json:"key"`
+	Remark     string    `json:"remark,omitempty"` // 用户备注（区分同名的多条记录，不写入证书）
 }
 
 // CertRecord 是由某台 CA 签发出的叶子证书（步骤二的产物）。
@@ -38,6 +39,7 @@ type CertRecord struct {
 	NotAfter   time.Time `json:"not_after"`
 	CertPEM    string    `json:"cert"`
 	KeyPEM     string    `json:"key"`
+	Remark     string    `json:"remark,omitempty"` // 用户备注（区分同域名/同 CN 的多张证书，不写入证书）
 }
 
 // CertStore 把 CA 与已签发证书持久化为 JSON 文件（临时文件 + 原子替换）。
@@ -203,6 +205,36 @@ func (s *certState) deleteCert(id string) bool {
 	return true
 }
 
+// setCARemark / setCertRemark 更新记录备注并持久化。
+// 失败时回滚内存中的修改，保证与磁盘一致。
+func (s *certState) setCARemark(id, remark string) (*CARecord, error) {
+	rec, ok := s.cas[id]
+	if !ok {
+		return nil, fmt.Errorf("CA 记录 %s 不存在", id)
+	}
+	old := rec.Remark
+	rec.Remark = remark
+	if err := s.saveLocked(); err != nil {
+		rec.Remark = old
+		return nil, err
+	}
+	return rec, nil
+}
+
+func (s *certState) setCertRemark(id, remark string) (*CertRecord, error) {
+	rec, ok := s.certs[id]
+	if !ok {
+		return nil, fmt.Errorf("证书记录 %s 不存在", id)
+	}
+	old := rec.Remark
+	rec.Remark = remark
+	if err := s.saveLocked(); err != nil {
+		rec.Remark = old
+		return nil, err
+	}
+	return rec, nil
+}
+
 // listCAs / listCerts 返回全部记录（按创建时间从新到旧）。
 func (s *certState) listCAs() []*CARecord {
 	out := make([]*CARecord, 0, len(s.cas))
@@ -241,8 +273,8 @@ func certStoreDefaultPath(dataPath string) string {
 }
 
 // importCA 从 PEM 导入已有 CA（证书 + 私钥）并持久化。
-// 名称/算法/有效期从证书解析。
-func (s *certState) importCA(id string, certPEM, keyPEM string) (*CARecord, error) {
+// 名称/算法/有效期从证书解析，remark 为用户备注（可为空）。
+func (s *certState) importCA(id string, certPEM, keyPEM, remark string) (*CARecord, error) {
 	if _, err := certgen.LoadCA([]byte(certPEM), []byte(keyPEM)); err != nil {
 		return nil, err
 	}
@@ -258,6 +290,7 @@ func (s *certState) importCA(id string, certPEM, keyPEM string) (*CARecord, erro
 		NotAfter:   cert.NotAfter,
 		CertPEM:    certPEM,
 		KeyPEM:     keyPEM,
+		Remark:     remark,
 	}
 	s.cas[id] = rec
 	if err := s.saveLocked(); err != nil {
@@ -269,8 +302,8 @@ func (s *certState) importCA(id string, certPEM, keyPEM string) (*CARecord, erro
 
 // importCert 从 PEM 导入一张已签发的证书（证书 + 私钥）并持久化。
 // 用途按 ExtKeyUsage 推断；ca_id 给出时关联已存储的 CA，
-// 否则以证书的签发者 CN 作为来源记录。
-func (s *certState) importCert(id string, certPEM, keyPEM, caID string) (*CertRecord, error) {
+// 否则以证书的签发者 CN 作为来源记录。remark 为用户备注（可为空）。
+func (s *certState) importCert(id string, certPEM, keyPEM, caID, remark string) (*CertRecord, error) {
 	// 私钥须可解析（PKCS#8 / EC SEC1 / RSA PKCS#1）且与证书配对
 	key, err := certgen.ParsePrivateKey([]byte(keyPEM))
 	if err != nil {
@@ -291,6 +324,7 @@ func (s *certState) importCert(id string, certPEM, keyPEM, caID string) (*CertRe
 		NotAfter:   cert.NotAfter,
 		CertPEM:    certPEM,
 		KeyPEM:     keyPEM,
+		Remark:     remark,
 	}
 	if caID != "" {
 		if ca, ok := s.cas[caID]; ok {

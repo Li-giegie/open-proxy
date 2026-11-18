@@ -469,7 +469,7 @@
           <table class="cert-list-table" style="min-width:0;width:100%">
             <thead><tr>
               <th style="width:90px">类型</th><th style="width:22%">名称</th><th>用途/算法</th>
-              <th>签发 CA</th><th style="width:110px">过期时间</th>
+              <th>签发 CA</th><th>备注</th><th style="width:110px">过期时间</th>
               <th style="width:200px">操作</th>
             </tr></thead>
             <tbody id="saved-rows"></tbody>
@@ -516,6 +516,21 @@
   </form>
 </dialog>
 
+<!-- 备注编辑弹窗：给已保存的 CA/证书记录改备注（区分同名记录） -->
+<dialog id="remark-dlg">
+  <h2 id="remark-title">编辑备注</h2>
+  <form onsubmit="return submitRemarkEdit(event)">
+    <div class="field"><label>备注</label>
+      <input id="remark-input" maxlength="256" placeholder="如：网关入口用 / 测试环境用 / 2026-11 续期">
+      <div class="hint">仅保存在管理记录里，不写入证书；留空即清除备注</div>
+    </div>
+    <div class="form-actions">
+      <button type="button" onclick="remarkDlg.close()">取消</button>
+      <button type="submit" class="primary">保存</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- 证书导入弹窗：从文本/文件导入已有 CA 或证书 -->
 <dialog id="import-dlg">
   <h2 id="import-dlg-title">导入证书</h2>
@@ -532,6 +547,11 @@
 
     <div id="im-cert-extra" hidden>
       <div class="field"><label>签发 CA（可选，关联已保存的记录）</label><select id="im-ca"></select></div>
+    </div>
+
+    <div class="field"><label>备注（可选）</label>
+      <input id="im-remark" maxlength="256" placeholder="区分同域名/同名的多条记录，如：网关入口用 / 测试环境用">
+      <div class="hint">仅保存在管理记录里，不写入证书</div>
     </div>
 
     <div class="form-actions">
@@ -761,6 +781,7 @@ const recDlg = $('rec-dlg');
 const certDlg = $('cert-dlg');
 const importDlg = $('import-dlg');
 const pfxDlg = $('pfx-dlg');
+const remarkDlg = $('remark-dlg');
 const pickDlg = $('pick-dlg');
 let createType = 'forward';
 let currentId = null;
@@ -1153,6 +1174,7 @@ function submitCertCreate(ev) {
 // openCertImport 打开导入弹窗：类型、证书、私钥、（证书时）CA 关联。
 function openCertImport() {
   for (const el of importDlg.querySelectorAll('textarea,select')) el.value = '';
+  $('im-remark').value = '';
   $('im-kind').value = 'ca';
   importKindChanged();
   loadCAOptionsFor($('im-ca'));
@@ -1187,9 +1209,10 @@ function submitCertImport(ev) {
   const key = $('im-key').value.trim();
   if (!cert || !key) { toast('证书与私钥 PEM 不能为空'); return false; }
   const kind = $('im-kind').value;
+  const remark = $('im-remark').value.trim();
   const body = kind === 'ca'
-    ? { cert, key }
-    : { cert, key, ca_id: $('im-ca').value || '' };
+    ? { cert, key, remark }
+    : { cert, key, ca_id: $('im-ca').value || '', remark };
   const url = kind === 'ca' ? '/api/cas/import' : '/api/certs/import';
   busy(ev.target.querySelector('button[type=submit]'),
     api('POST', url, body).then(() => {
@@ -1268,11 +1291,13 @@ function renderSavedRecords(cas, certs) {
       <td class="mono"></td>
       <td></td>
       <td></td>
+      <td></td>
       <td class="mono"></td>
       <td><div class="actions">
         <button class="small">查看</button>
         <button class="small">下载</button>
         <button class="small pfx-btn" style="display:none">PFX</button>
+        <button class="small">备注</button>
         <button class="small danger">删除</button>
       </div></td>`;
     const cells = tr.querySelectorAll('td');
@@ -1283,11 +1308,15 @@ function renderSavedRecords(cas, certs) {
     cells[1].textContent = rec.common_name;
     cells[2].textContent = kind === 'ca' ? (rec.algorithm || '—') : (rec.usage || '—');
     cells[3].textContent = kind === 'ca' ? '—（自签根）' : (rec.ca_name || '—');
-    cells[4].textContent = fmtDay(rec.not_after);
+    // 备注列：用户自定义标签，区分同域名/同名的多条记录
+    cells[4].textContent = rec.remark || '—';
+    cells[4].title = rec.remark || '';
+    cells[5].textContent = fmtDay(rec.not_after);
     const btns = tr.querySelectorAll('button');
     btns[0].onclick = () => viewRecord(kind, rec);
     btns[1].onclick = () => downloadRecord(kind, rec);
-    btns[3].onclick = () => deleteRecord(kind, rec);
+    btns[3].onclick = () => openRemarkEdit(kind, rec);
+    btns[4].onclick = () => deleteRecord(kind, rec);
     if (kind === 'cert') {
       // 派发的证书：导出浏览器 PFX（PKCS#12）
       btns[2].style.display = '';
@@ -1298,9 +1327,39 @@ function renderSavedRecords(cas, certs) {
   $('saved-empty').hidden = rows.length > 0;
 }
 
+/* ================= 备注编辑（区分同域名/同名的多条记录） ================= */
+
+// remarkTarget 记录当前正在编辑备注的记录（kind + id）。
+let remarkTarget = null;
+
+// openRemarkEdit 打开备注编辑弹窗，预填当前备注。
+function openRemarkEdit(kind, rec) {
+  remarkTarget = { kind, id: rec.id };
+  $('remark-title').textContent = '编辑备注 — ' + (rec.common_name || '');
+  $('remark-input').value = rec.remark || '';
+  remarkDlg.showModal();
+}
+
+// submitRemarkEdit 提交备注：PATCH /api/cas/{id} 或 /api/certs/{id}。
+// 留空提交即清除备注。
+function submitRemarkEdit(ev) {
+  ev.preventDefault();
+  if (!remarkTarget) return false;
+  const { kind, id } = remarkTarget;
+  const url = (kind === 'ca' ? '/api/cas/' : '/api/certs/') + id;
+  busy(ev.target.querySelector('button[type=submit]'),
+    api('PATCH', url, { remark: $('remark-input').value.trim() }).then(() => {
+      remarkDlg.close();
+      refreshSavedCerts();
+      toast('备注已保存');
+    }).catch(err => toast('保存失败：' + err)));
+  return false;
+}
+
 // viewRecord 打开记录查看弹窗（证书/私钥 PEM + 复制/下载 + 删除）。
 function viewRecord(kind, rec) {
-  $('rec-title').textContent = (kind === 'ca' ? 'CA — ' : '证书 — ') + (rec.common_name || '');
+  $('rec-title').textContent = (kind === 'ca' ? 'CA — ' : '证书 — ')
+    + (rec.common_name || '') + (rec.remark ? '（' + rec.remark + '）' : '');
   $('rec-cert').value = rec.cert || '';
   $('rec-key').value = rec.key || '';
   const del = $('rec-delete');
@@ -1377,7 +1436,9 @@ function openCertPicker(kind, certEl, keyEl) {
         <td><button class="small primary">选用</button></td>`;
       const cells = tr.querySelectorAll('td');
       cells[0].textContent = kind === 'ca' ? '根 CA' : '证书';
-      cells[1].textContent = rec.common_name;
+      // 名称附注备注，选择时可区分同域名/同名的多条记录
+      cells[1].textContent = rec.remark
+        ? `${rec.common_name}（${rec.remark}）` : rec.common_name;
       cells[2].textContent = kind === 'ca' ? (rec.algorithm || '—')
         : ({ client: '客户端', server: '服务端', both: '双向' }[rec.usage] || rec.usage);
       cells[3].textContent = fmtDay(rec.not_after);
