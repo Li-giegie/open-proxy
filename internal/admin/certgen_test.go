@@ -2,6 +2,7 @@ package admin
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -514,6 +515,84 @@ func TestImportCAAndCert(t *testing.T) {
 	if resp5.StatusCode != http.StatusNotFound {
 		t.Errorf("bad ca_id import: status = %d, want 404", resp5.StatusCode)
 	}
+}
+
+// TestImportCertPKCS1Key 验证导入端点兼容 RSA PKCS#1 私钥
+// （`RSA PRIVATE KEY` PEM，导入来源常见格式），且私钥与证书
+// 不配对时报 400。
+func TestImportCertPKCS1Key(t *testing.T) {
+	_, api := newTestManager(t)
+
+	// RSA CA 签发叶子证书（输出为 PKCS#8），转码为 PKCS#1 再导入
+	ca, err := certgen.NewCA(certgen.CAOptions{CommonName: "pkcs1-ca", Days: 30, Algorithm: certgen.AlgoRSA})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cliPEM, cliKeyPEM, err := ca.Issue(certgen.CertOptions{CommonName: "pkcs1-alice", Days: 30, Usage: certgen.UsageClient})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkcs1PEM, err := toPKCS1PEM(cliKeyPEM)
+	if err != nil {
+		t.Fatal(err)
+	}
+	block, _ := pem.Decode(pkcs1PEM)
+	if block == nil || block.Type != "RSA PRIVATE KEY" {
+		t.Fatalf("转码结果不是 RSA PRIVATE KEY PEM")
+	}
+
+	body, _ := json.Marshal(map[string]string{"cert": string(cliPEM), "key": string(pkcs1PEM)})
+	resp, err := api.Client().Post(api.URL+"/api/certs/import", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("import pkcs1: status = %d, body = %s", resp.StatusCode, raw)
+	}
+	var rec struct {
+		CommonName string `json:"common_name"`
+		Algorithm  string `json:"algorithm"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&rec); err != nil {
+		t.Fatal(err)
+	}
+	if rec.CommonName != "pkcs1-alice" {
+		t.Errorf("导入记录 = %+v", rec)
+	}
+
+	// 私钥与证书不配对（bob 的证书配 alice 的私钥）：400
+	otherPEM, _, err := ca.Issue(certgen.CertOptions{CommonName: "pkcs1-bob", Days: 30, Usage: certgen.UsageClient})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body2, _ := json.Marshal(map[string]string{"cert": string(otherPEM), "key": string(pkcs1PEM)})
+	resp2, err := api.Client().Post(api.URL+"/api/certs/import", "application/json", bytes.NewReader(body2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusBadRequest {
+		t.Errorf("不配对导入: status = %d, want 400", resp2.StatusCode)
+	}
+}
+
+// toPKCS1PEM 把 PKCS#8 RSA 私钥 PEM 重编码为 PKCS#1（RSA PRIVATE KEY）。
+func toPKCS1PEM(keyPEM []byte) ([]byte, error) {
+	block, _ := pem.Decode(keyPEM)
+	if block == nil {
+		return nil, fmt.Errorf("无效 PEM")
+	}
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	rsaKey, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("不是 RSA 私钥: %T", key)
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(rsaKey)}), nil
 }
 
 // TestExportRecordPFX 验证已保存证书记录的 PFX 导出端点：

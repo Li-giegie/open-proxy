@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -270,13 +271,17 @@ func (s *certState) importCA(id string, certPEM, keyPEM string) (*CARecord, erro
 // 用途按 ExtKeyUsage 推断；ca_id 给出时关联已存储的 CA，
 // 否则以证书的签发者 CN 作为来源记录。
 func (s *certState) importCert(id string, certPEM, keyPEM, caID string) (*CertRecord, error) {
-	// 私钥与证书须配对
-	if _, err := x509.ParsePKCS8PrivateKey(mustPEMBlock(keyPEM)); err != nil {
-		return nil, fmt.Errorf("私钥与证书不配对或格式不支持: %w", err)
+	// 私钥须可解析（PKCS#8 / EC SEC1 / RSA PKCS#1）且与证书配对
+	key, err := certgen.ParsePrivateKey([]byte(keyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("解析私钥: %w", err)
 	}
 	cert, err := parseStoredCert(certPEM)
 	if err != nil {
 		return nil, err
+	}
+	if !equalPublicKeys(key.Public(), cert.PublicKey) {
+		return nil, errors.New("私钥与证书不配对或格式不支持")
 	}
 	rec := &CertRecord{
 		ID:         id,
@@ -339,11 +344,12 @@ func usageOf(cert *x509.Certificate) string {
 	}
 }
 
-// mustPEMBlock 解出 PEM 第一个 block 的内容（私钥解析用）。
-func mustPEMBlock(pemStr string) []byte {
-	block, _ := pem.Decode([]byte(pemStr))
-	if block == nil {
-		return nil
+// equalPublicKeys 比较两个公钥是否一致（校验私钥与证书配对）。
+func equalPublicKeys(a, b any) bool {
+	ab, err := x509.MarshalPKIXPublicKey(a)
+	if err != nil {
+		return false
 	}
-	return block.Bytes
+	bb, err := x509.MarshalPKIXPublicKey(b)
+	return err == nil && bytes.Equal(ab, bb)
 }

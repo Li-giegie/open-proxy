@@ -377,6 +377,12 @@ func marshalKey(key any) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), nil
 }
 
+// ParsePrivateKey 解析 PEM 私钥（PKCS#8 优先，兼容 EC SEC1 与
+// RSA PKCS#1），供存储层校验导入的私钥。
+func ParsePrivateKey(pemBytes []byte) (crypto.Signer, error) {
+	return parseKey(pemBytes)
+}
+
 // parseKey 解析私钥（PKCS#8 通用，兼容 EC SEC1 与 RSA PKCS#1），
 // 返回可作为 crypto.Signer 使用的私钥。
 func parseKey(pemBytes []byte) (crypto.Signer, error) {
